@@ -119,15 +119,15 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
     <div id="netBadge"></div>
     <div id="pipFrame" title="클릭: 큰 화면과 바꾸기"><span>📺 중계 (옆)</span></div>
     <div id="touch">
-      <div class="grp"><button data-k="left">◀</button><button data-k="down">▼<br><small>후진</small></button><button data-k="right">▶</button></div>
-      <div class="grp"><button data-k="stop" class="stop">LT<br><small>정지</small></button><button data-k="act">A<br><small>슛/플립</small></button><button data-k="gas" class="gas">RT<br><small>액셀</small></button></div>
+      <div class="grp"><button data-k="left">◀</button><div style="display:flex;flex-direction:column;gap:10px"><button data-k="up">▲</button><button data-k="down">▼</button></div><button data-k="right">▶</button></div>
+      <div class="grp"><button data-k="stop" class="stop">LT<br><small>정지</small></button><button data-k="act">A<br><small>슛/플립</small></button><button data-k="gas" class="gas">RT<br><small>파워 100%</small></button></div>
     </div>
     <div id="dropHint">여기에 LDR / MPD / STL 파일을 놓으세요</div>
     <div id="overlay"><div class="card">
       <h1>대회연습용 조종 시뮬레이터</h1>
       <p>MRC 축구 · 로보레이브 SoccerBot RC · 로봇배틀 오셀로 (worldrobotleague.net 규칙)</p>
       <p>🎮 <b>엑스박스 컨트롤러</b>를 PC에 블루투스로 페어링한 뒤 <b>아무 버튼이나 한 번 누르면</b> 연결됩니다. 내 로봇 1대를 조종하고, 상대 팀과 우리 팀의 나머지 로봇은 AI가 움직입니다.</p>
-      <p class="note">아래 스위치를 켜야 컨트롤러 입력이 시뮬레이터에 연결됩니다(화면 왼쪽 아래 스위치 · G 키로도 전환).<br>D패드: 방향 전환(↓ 후진) · RT: 액셀 · LT: 비상정지 · A: 슛(MRC) / 플립(오셀로) · RB: 조종 로봇 변경 · Y: 카메라 · View: 재배치 · Menu: 일시정지<br>키보드: W/S 전후진 · A/D 회전 · Q/E 옆이동(옴니) · Space 액션 · F 로봇 변경 · C 카메라 · R 재배치 · P 일시정지</p>
+      <p class="note">아래 스위치를 켜야 컨트롤러 입력이 시뮬레이터에 연결됩니다(화면 왼쪽 아래 스위치 · G 키로도 전환).<br>D패드: ↑↓ 이동 · ←→ 포인트 턴 (기본 50%) · RT: 파워 50→100% · LT: 비상정지 · A: 슛(MRC) / 플립(오셀로) · RB: 조종 로봇 변경 · Y: 카메라 · View: 재배치 · Menu: 일시정지<br>키보드: W/S 전후진 · A/D 회전 · Q/E 옆이동(옴니) · Space 액션 · F 로봇 변경 · C 카메라 · R 재배치 · P 일시정지</p>
       <label class="row" style="justify-content:flex-start;gap:10px;margin:12px 0 4px"><span class="sw"><input type="checkbox" id="padOn0"><span></span></span><span>엑스박스 컨트롤러 연결</span></label>
       <div class="btns"><button class="btn pri" id="startBtn">클릭해서 시작</button></div>
     </div></div>
@@ -195,7 +195,7 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <div class="btns"><button class="btn" id="padTest">진동 테스트</button></div>
       <div class="note" id="padInfo">꺼짐. 토글을 켜고 컨트롤러 버튼을 한 번 누르세요.</div>
       <label class="row"><span>조작 방식</span><select id="padMode">
-        <option value="dpad">대회 방식 (D패드 방향 · RT 액셀 · LT 비상정지)</option>
+        <option value="dpad">대회 방식 (D패드 50% · RT 파워 50→100% · LT 비상정지)</option>
         <option value="arcade">아케이드 (왼스틱 하나)</option>
         <option value="split">분리형 (왼스틱 전후 + 오른스틱 회전)</option>
         <option value="tank">탱크 (양 스틱 = 좌/우 바퀴)</option>
@@ -212,9 +212,9 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <div class="note" id="bcNote">새 창에 옆에서 본 중계 화면만 크게 띄웁니다. 창을 두 번째 모니터로 옮겨 전체 화면(F11)으로 쓰세요. 이 창에서 진행되는 경기가 그대로 나옵니다.</div>
       <table class="keys">
         <tr><td colspan="2"><b>대회 방식 (기본)</b></td></tr>
-        <tr><td>D패드 ← / →</td><td>방향 전환 (좌/우 회전, 정지 중에도 제자리 회전)</td></tr>
-        <tr><td>D패드 ↓ (누르는 동안)</td><td>후진</td></tr>
-        <tr><td>RT</td><td>액셀 — 누르는 깊이만큼 속도</td></tr>
+        <tr><td>D패드 ↑ / ↓</td><td>전진 / 후진 — 기본 50% 파워</td></tr>
+        <tr><td>D패드 ← / →</td><td>포인트 턴 — 로봇 중심에서 제자리 회전 (↑/↓를 같이 눌러도 회전만) — 기본 50%</td></tr>
+        <tr><td>RT</td><td>파워 조절 — 누르는 깊이만큼 50% → 100% (RT만 누르면 전진)</td></tr>
         <tr><td>LT</td><td>비상정지 (누르는 동안 즉시 정지, 다른 입력 무시)</td></tr>
         <tr><td>A</td><td>MRC 축구: 슛 (킥 모터) · 오셀로: 블록 뒤집기 (플립)</td></tr>
         <tr><td colspan="2"><b>다른 방식</b></td></tr>
@@ -577,6 +577,14 @@ function buildPhysicsField(){
     const body=new CANNON.Body({mass:0,material:MAT.ground}); body.addShape(new CANNON.ConvexPolyhedron({vertices:verts,faces})); world.addBody(body);
   }
 }
+// 바닥 단면 다각형(x,z)을 위아래로 뽑은 볼록 기둥
+function prismShape(poly,y0,y1){ const verts=[]; for(const [x,z] of poly) verts.push(new CANNON.Vec3(x,y1,z)); for(const [x,z] of poly) verts.push(new CANNON.Vec3(x,y0,z));
+  const n=poly.length, faces=[[...Array(n).keys()],[...Array(n).keys()].map(i=>n+i)]; for(let i=0;i<n;i++){ const j=(i+1)%n; faces.push([i,j,n+j,n+i]); }
+  const c0=new CANNON.Vec3(0,(y0+y1)/2,0);
+  for(const f of faces){ const a=verts[f[0]], b=verts[f[1]], c=verts[f[2]]; const nrm=b.vsub(a).cross(c.vsub(a)); const fc=verts[f[0]].vadd(verts[f[2]]).scale(0.5); if(nrm.dot(fc.vsub(c0))<0) f.reverse(); }
+  return new CANNON.ConvexPolyhedron({vertices:verts,faces}); }
+function chamferBox(hl,hh,hw){ const c=Math.min(hl,hw)*0.3; // 모서리 30% 깎기
+  return prismShape([[hl,-hw+c],[hl,hw-c],[hl-c,hw],[-hl+c,hw],[-hl,hw-c],[-hl,-hw+c],[-hl+c,-hw],[hl-c,-hw]],-hh,hh); }
 const yawQ=(th)=>new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0),th);
 function teleport(body,x,y,z,th=0){ body.position.set(x,y,z); body.previousPosition.set(x,y,z); body.interpolatedPosition.set(x,y,z);
   body.quaternion.copy(yawQ(th)); body.velocity.set(0,0,0); body.angularVelocity.set(0,0,0); body.force.set(0,0,0); body.torque.set(0,0,0); }
@@ -730,7 +738,8 @@ function makeRobot(team, idx){
     cmd:{f:0,t:0,s:0,act:false,fine:false}, out:false, fallT:0, coneDone:false, idleT:0, sdT:0, stuckT:0, unstick:0, actCD:0, kickCD:0, kickT:0, role:'', mesh:new THREE.Group()};
   r.H=Math.max(0.02,r.H);
   r.body=new CANNON.Body({mass:r.mass,material:MAT.robot,linearDamping:0.05,angularDamping:0.1});
-  r.body.addShape(new CANNON.Box(new CANNON.Vec3(r.hl,r.H/2,r.hw)));
+  r.shapeBox=chamferBox(r.hl,r.H/2,r.hw); { const c=Math.min(r.hl,r.hw)*0.3, R=Math.max(Math.hypot(r.hl,r.hw-c),Math.hypot(r.hl-c,r.hw)); r.spinR=R; r.shapeCyl=new CANNON.Cylinder(R,R,r.H,20); } r.shapeNow='box'; r.wallT=0; r.spinHold=0;
+  r.body.addShape(r.shapeBox);
   r.body.angularFactor.set(0,1,0); r.body.userData={kind:'robot',ent:r}; world.addBody(r.body);
   r.visRoot=new THREE.Group(); r.visRoot.position.y=-r.H/2; r.visRoot.add(vis.object); r.mesh.add(r.visRoot);
   if(RS.kick){ const kp=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.004,r.hl*0.06),r.H*0.35,r.hw*1.2),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.6,roughness:0.3}));
@@ -854,10 +863,12 @@ function pollInput(){
     let estop=false;
     if(S.padMode==='dpad'){
       const up=p.buttons[12]?.pressed, dn=p.buttons[13]?.pressed, lf=p.buttons[14]?.pressed, rg=p.buttons[15]?.pressed;
-      const gas = rt<0.04?0:rt;                         // RT 아날로그 = 액셀
-      f += gas*(dn&&!up?-1:1);                          // D패드 ↓ 누르는 동안 후진
-      t += (lf?1:0)-(rg?1:0);                           // D패드 ←/→ = 방향 전환(회전)
-      if(t) t*= gas>0 ? (0.55+0.45*gas) : 0.6;          // 정지 중에도 제자리 회전, 액셀 밟으면 더 빠르게
+      const gas = rt<0.04?0:rt;                         // RT 아날로그
+      const power = 0.5 + 0.5*gas;                      // D패드 기본 50% · RT 깊이에 따라 50→100%
+      let df = (up?1:0)-(dn?1:0), dt2 = (lf?1:0)-(rg?1:0);
+      if(dt2) df=0;                                     // ←/→ = 포인트 턴 (전후진 없이 제자리 회전)
+      if(!df && !dt2 && gas>0) df=1;                    // D패드 없이 RT만 누르면 전진
+      f += df*power; t += dt2*power;
       if(lt>0.25) estop=true;                           // LT = 비상정지
     } else if(S.drive==='omni'){
       if(S.omniRef==='field'){ fieldRel=true; fx=lx; fz=ly; }
@@ -888,7 +899,7 @@ function pollInput(){
   }
   $('#padled').className='padled'+(p?' live':(S.padOn?' wait':'')); $('#padbox').classList.toggle('on',!!p);
   updatePadSel();
-  if(TOUCH.on){ const T=TOUCH.k; if(T.gas) f+= T.down?-1:1; t += (T.left?1:0)-(T.right?1:0); if(t) t*= T.gas?1:0.6; if(T.act) act=true; }
+  if(TOUCH.on){ const T=TOUCH.k; const power=T.gas?1:0.5; let df=(T.up?1:0)-(T.down?1:0), dt2=(T.left?1:0)-(T.right?1:0); if(dt2) df=0; if(!df&&!dt2&&T.gas) df=1; f+=df*power; t+=dt2*power; if(T.act) act=true; }
   if(me){
     if(fieldRel && me){ // 조종자 시점 기준: 스틱 위 = 화면 위쪽(카메라 기준)
       const cf=new THREE.Vector3(); camera.getWorldDirection(cf); cf.y=0; cf.normalize(); const cr=new THREE.Vector3(-cf.z,0,cf.x);
@@ -1035,6 +1046,7 @@ const MU=1.1; // 바퀴 견인 한계 (마찰계수)
 const tmpV=new CANNON.Vec3();
 function driveRobot(r,dt){
   const b=r.body;
+  r.wCmd=0;
   if(r.cmd.estop){ b.velocity.x=0; b.velocity.z=0; b.angularVelocity.set(0,0,0); return; }   // 비상정지: 즉시 정지
   if(r.out || b.position.y > r.H/2+0.03 || b.position.y < r.H/2-0.03) return; // 공중/낙하 중엔 구동력 없음
   const p=robotParams(r); const th=r.th; const fx=Math.cos(th),fz=-Math.sin(th),lx=-Math.sin(th),lz=-Math.cos(th);
@@ -1042,11 +1054,24 @@ function driveRobot(r,dt){
   let tf=clamp(r.cmd.f,-1,1), ts=p.omni?clamp(r.cmd.s,-1,1):0; const m=Math.hypot(tf,ts); if(m>1){tf/=m;ts/=m;}
   // 목표 속도까지의 가속도 (모터 가속 한계) → 힘, 바퀴 견인 한계로 제한
   const au=clamp((tf*p.vmax-u)/dt,-p.acc,p.acc);
-  const al=clamp((ts*p.vmax-v)/dt,-(p.omni?p.acc:60),(p.omni?p.acc:60)); // 차동: 옆미끄럼 저항
+  const spinning = Math.abs(r.cmd.t)>0.1 && Math.abs(tf)<0.25;
+  // 벽에 붙은 채 제자리 회전: 회전 반경(원기둥)으로 충돌 → 모서리가 벽을 밀어내며 회전
+  r.spinHold = spinning && r.wallT>0 ? 0.25 : Math.max(0,r.spinHold-dt);
+  const want = r.spinHold>0 ? 'cyl' : 'box';
+  if(want!==r.shapeNow){
+    if(want==='cyl'){ // 회전 원이 벽과 겹치는 만큼 로봇을 벽 반대쪽으로 옮김
+      for(const w of F.walls){ const ex=w.bx-w.ax, ez=w.bz-w.az, L2=ex*ex+ez*ez; let t=((b.position.x-w.ax)*ex+(b.position.z-w.az)*ez)/L2; t=clamp(t,0,1);
+        const qx=w.ax+ex*t, qz=w.az+ez*t; let dx=b.position.x-qx, dz=b.position.z-qz; const d=Math.hypot(dx,dz), need=r.spinR+Math.max(w.wt,0.01)+0.001;
+        if(d<need && d>1e-6){ b.position.x+=dx/d*(need-d); b.position.z+=dz/d*(need-d); } } }
+    b.removeShape(b.shapes[0]); b.addShape(want==='cyl'?r.shapeCyl:r.shapeBox); b.updateMassProperties(); r.shapeNow=want; }
+  if(r.spinHold>0){ const sp=Math.hypot(b.velocity.x,b.velocity.z), cap=Math.max(Math.abs(tf)*p.vmax,0.12); if(sp>cap){ b.velocity.x*=cap/sp; b.velocity.z*=cap/sp; } }
+  const latMax = p.omni ? p.acc : (spinning ? 8 : 60);   // 차동: 옆미끄럼 저항 (제자리 회전 중엔 완화)
+  const al=clamp((ts*p.vmax-v)/dt,-latMax,latMax);
   let Fx=r.mass*(au*fx+al*lx), Fz=r.mass*(au*fz+al*lz); const Fm=Math.hypot(Fx,Fz), Fmax=MU*r.mass*9.81;
   if(Fm>Fmax){ Fx*=Fmax/Fm; Fz*=Fmax/Fm; }
   b.force.x+=Fx; b.force.z+=Fz;
-  const wt=clamp(r.cmd.t,-1,1)*p.turn; b.angularVelocity.y=approach(b.angularVelocity.y,wt,p.turn*8*dt);
+  const wt=clamp(r.cmd.t,-1,1)*p.turn; b.angularVelocity.y=approach(b.angularVelocity.y,wt,p.turn*8*dt); r.wCmd=b.angularVelocity.y;
+  if(Math.abs(wt)>0.1){ const I=r.mass*(r.hl*r.hl+r.hw*r.hw)/3; b.torque.y+=clamp((wt-b.angularVelocity.y)*I/0.05,-MU*r.mass*9.81*Math.max(r.hl,r.hw),MU*r.mass*9.81*Math.max(r.hl,r.hw)); }
 }
 function obbAxes(r){ const c=Math.cos(r.th), s=Math.sin(r.th); return {f:[c,-s], l:[-s,-c]}; }
 function toLocal(r,x,z){ const {f,l}=obbAxes(r); const dx=x-r.x, dz=z-r.z; return [dx*f[0]+dz*f[1], dx*l[0]+dz*l[1]]; }
@@ -1086,13 +1111,19 @@ function physicsStep(dt){
       // 구름 저항
       if(ball.body.position.y<ball.r*1.05 && sp>0){ const dec=RS.ball.c*dt; const k=Math.max(0,sp-dec)/sp; v.x*=k; v.z*=k; } } }
   world.step(dt);
+  // 벽·로봇에 막혀 회전이 안 되면 모자란 회전만큼 직접 돌림 → 다음 스텝에서 충돌이 로봇을 밀어냄 (벽에 붙어도 제자리 회전 가능)
+  for(const r of robots){ if(r.out || !r.wCmd) continue; const b=r.body; const def=r.wCmd-b.angularVelocity.y;
+    if(Math.abs(r.wCmd)>0.2 && Math.abs(def)>0.25*Math.abs(r.wCmd)){ const dq=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0),def*dt*0.9); b.quaternion.copy(dq.mult(b.quaternion)); b.quaternion.normalize(); r.assist=(r.assist||0)+1; } }
   for(const r of robots){ r.th=bodyYaw(r.body); syncEnt(r); r.w=r.body.angularVelocity.y; }
   if(ball){ syncEnt(ball); if(ball.body.position.y<-1){ teleport(ball.body,0,ball.r,0); } }
   for(const b of blocks) syncEnt(b);
   for(const c of cones) syncEnt(c);
   // 접촉 정보
   contactPairs.clear();
-  for(const c of world.contacts){ const A=c.bi.userData, B=c.bj.userData; if(!A||!B) continue;
+  for(const r of robots) r.wallT=Math.max(0,r.wallT-dt);
+  for(const c of world.contacts){ const A=c.bi.userData, B=c.bj.userData;
+    if(Math.abs(c.ni.y)<0.5){ if(A&&A.kind==='robot'&&c.bj.mass===0) A.ent.wallT=0.2; else if(B&&B.kind==='robot'&&c.bi.mass===0) B.ent.wallT=0.2; }
+    if(!A||!B) continue;
     if(A.kind==='robot'&&B.kind==='robot'){ const i=robots.indexOf(A.ent), j=robots.indexOf(B.ent); contactPairs.add(Math.min(i,j)+','+Math.max(i,j)); }
     else if((A.kind==='robot'&&B.kind==='block')||(B.kind==='robot'&&A.kind==='block')){ const r=A.kind==='robot'?A.ent:B.ent, bl=A.kind==='block'?A.ent:B.ent; bl.last=r.team;
       if(S.strict && RS.type==='othello' && !r.coneDone && G.phase==='play' && Math.hypot(r.vx,r.vz)>0.05) startViolation(r); }
@@ -1599,7 +1630,7 @@ $('#padSel').addEventListener('change',e=>{ padPick=+e.target.value; padPrev=[];
 $('#padTest').addEventListener('click',()=>{ if(!getPad()) return banner(S.padOn?'컨트롤러가 아직 없습니다':'먼저 컨트롤러 연결을 켜세요',1.2); rumble(0.8,1,400); });
 try{ if(localStorage.getItem('sim.padOn')==='1'){ S.padOn=true; for(const id of ['#padOn','#padOn0','#padOn2']) $(id).checked=true; } }catch(e){}
 // 디버그/테스트용 훅
-window.__sim={advance(sec){ for(let i=0;i<sec/DT;i++){ pollInput(); ruleStep(DT); physicsStep(DT);} syncVisuals(0.016); },G,S,get robots(){return robots;},get ball(){return ball;},get blocks(){return blocks;},applyRS,setupMatch,importModel,setCam,models};
+window.__sim={teleportRobot(r,x,z,th){ teleport(r.body,x,r.H/2+0.001,z,th); r.th=th; },advance(sec){ for(let i=0;i<sec/DT;i++){ pollInput(); ruleStep(DT); physicsStep(DT);} syncVisuals(0.016); },G,S,get robots(){return robots;},get ball(){return ball;},get blocks(){return blocks;},applyRS,setupMatch,importModel,setCam,models};
 
 loadBuiltinLib(); libStatus();
 if(IS_SPECTATOR){ document.body.classList.add('spectator'); $('#overlay').style.display='none'; document.title='📺 중계 — 대회연습용 조종 시뮬레이터';
