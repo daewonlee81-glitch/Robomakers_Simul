@@ -211,13 +211,28 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <div class="btns"><button class="btn" id="btnBroadcastWin">📺 중계 전용 창 열기 (프로젝터·두 번째 모니터)</button></div>
       <div class="note" id="bcNote">새 창에 옆에서 본 중계 화면만 크게 띄웁니다. 창을 두 번째 모니터로 옮겨 전체 화면(F11)으로 쓰세요. 이 창에서 진행되는 경기가 그대로 나옵니다.</div>
       <table class="keys">
-        <tr><td colspan="2"><b>대회 방식 (기본)</b></td></tr>
+        <tr><td colspan="2"><b>오셀로 (첨부 Pybricks 코드와 동일)</b></td></tr>
+        <tr><td>RT</td><td>파워 = RT 깊이 (0~100) — RT를 안 누르면 움직이지 않음</td></tr>
+        <tr><td>D패드 ↑ ↓</td><td>좌·우 = ±파워</td></tr>
+        <tr><td>D패드 → ←</td><td>포인트 턴 (좌 +파워·우 −파워 / 반대)</td></tr>
+        <tr><td>D패드 대각선</td><td>(drive±steer)×파워 → 한쪽 바퀴 2배·반대쪽 0 = 스윙턴 (100 넘으면 정규화)</td></tr>
+        <tr><td>A</td><td>C 모터 팔 0°→90°→0° (1500°/s) — 그동안 바퀴 브레이크 · 앞의 블록 뒤집기 / 세워진 네모판 넘어뜨리기</td></tr>
+        <tr><td>D패드 놓음</td><td>양쪽 브레이크</td></tr>
+        <tr><td colspan="2"><b>(예전) 대회 방식 — 조작 방식 목록에서 다른 방식 선택 시</b></td></tr>
         <tr><td>D패드 ↑ / ↓</td><td>전진 / 후진 — 기본 50% 파워</td></tr>
         <tr><td>D패드 ← / →</td><td>포인트 턴 — 로봇 중심에서 제자리 회전 (파워를 올려도 제자리 회전)</td></tr>
         <tr><td>D패드 대각선 ↖ ↗ ↙ ↘</td><td>스윙턴 — 안쪽 바퀴를 축으로 바깥 바퀴만 돌며 회전</td></tr>
         <tr><td>RT</td><td>파워 조절 — 누르는 깊이만큼 50% → 100% (RT만으로는 움직이지 않음)</td></tr>
         <tr><td>LT</td><td>비상정지 (누르는 동안 즉시 정지, 다른 입력 무시)</td></tr>
         <tr><td>A</td><td>MRC 축구: 슛 (킥 모터) · 오셀로: 블록 뒤집기 (플립)</td></tr>
+        <tr><td colspan="2"><b>MRC 축구 · 로보레이브 사커 (Pybricks 코드와 동일)</b></td></tr>
+        <tr><td>D패드 ↑ / ↓</td><td>좌·우 모터 파워로 전진 / 후진</td></tr>
+        <tr><td>D패드 → / ←</td><td>포인트 턴 (좌 +파워 · 우 −파워 / 반대)</td></tr>
+        <tr><td>D패드 ↗ ↖ ↘ ↙</td><td>좌 100 · 우 50 / 좌 50 · 우 100 (후진은 −100 · −50)</td></tr>
+        <tr><td>↑ + B / ↑ + X</td><td>왼쪽 바퀴만 / 오른쪽 바퀴만 (반대쪽 브레이크)</td></tr>
+        <tr><td>RT</td><td>누르는 동안 파워 100, 떼면 50 — 모터가 가속해서 속도가 서서히 올라감</td></tr>
+        <tr><td>LT</td><td>슛: 킥 모터 −100 150 ms → +100 200 ms (MRC Open/LEGO만 · Micro와 로보레이브는 슛터 없음)</td></tr>
+        <tr><td>D패드 놓음</td><td>양쪽 브레이크</td></tr>
         <tr><td colspan="2"><b>다른 방식</b></td></tr>
         <tr><td>왼쪽 스틱</td><td>주행 (아케이드·분리형·탱크·RC카). 옴니: 왼스틱 이동 · 오른스틱 회전</td></tr>
         <tr><td>B (누르는 동안)</td><td>정밀 모드 (속도 40%)</td></tr>
@@ -278,7 +293,7 @@ const RULESETS = {
   mrc_open: {
     name:'MRC 축구 · Open Hardware / LEGO', type:'soccer', src:'https://worldrobotleague.net/rules/mrc-soccer/',
     L:4.2, W:2.0, outerL:4.8, outerW:2.4, sideWall:0.10, endWall:0.10, goal:{w:0.80,h:0.40,d:0.40,pvc:true}, kick:3.5,
-    ball:{d:0.14,m:0.2,k:0.35,c:0.12,vmax:5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.18,0.18,0.14],mass:1.0,v:1.5,turn:6,acc:6},
+    ball:{d:0.14,m:0.2,k:0.35,c:0.12,vmax:5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:1.0,v:1.5,turn:6,acc:6},
     teamSize:3, teamOpts:[2,3], halves:2, halfLen:120, breakLen:60, called:null, markings:'mrc', kickoff:'center', five:false,
     rules:[
       '필드: 녹색 카펫 2.0 × 4.2 m (평평한 2.4 × 4.8 m 영역 안), 사이드라인에 약 10 cm 턱',
@@ -289,11 +304,11 @@ const RULESETS = {
       '공은 부피의 30%까지만 감쌀 수 있음 · 공을 잡거나 붙드는 구조 금지',
       '경기: 3 대 3, 전·후반 각 2분, 하프타임 최대 1분 · 제한 시간 내 득점이 많은 팀 승',
     ],
-    sim:['골라인(엔드라인)에도 높이 10 cm 벽 설치 — 골 입구만 열림','킥(슛) 모터: A 버튼으로 공을 참 (킥 속도 약 3.5 m/s, 재장전 0.5초). WRL 페이지에는 "공을 밀거나 잡는 장치 금지" 문구가 있으나 운영 기준에 따라 킥 모터 허용','반칙·킥오프·재개 규정은 MRC 페이지에 없어 KRL 방식(센터 킥오프)을 사용','2.4 × 4.8 m 바깥 경계는 로봇이 나가지 않도록 턱으로 처리'],
+    sim:['골라인(엔드라인)에도 높이 10 cm 벽 설치 — 골 입구만 열림','킥(슛) 모터: LT로 공을 참 — 킥 모터 −100% 150 ms 뒤 +100% 200 ms로 복귀 (킥 속도 약 3.5 m/s). WRL 페이지에는 "공을 밀거나 잡는 장치 금지" 문구가 있으나 운영 기준에 따라 킥 모터 허용','반칙·킥오프·재개 규정은 MRC 페이지에 없어 KRL 방식(센터 킥오프)을 사용','2.4 × 4.8 m 바깥 경계는 로봇이 나가지 않도록 턱으로 처리'],
   },
   mrc_micro: {
     name:'MRC 축구 · Micro', type:'soccer', src:'https://worldrobotleague.net/rules/mrc-soccer/',
-    L:0.64, W:0.38, sideWall:0.05, endWall:0.05, goal:{w:0.15,h:0.05,d:0.05}, kick:1.3,
+    L:0.64, W:0.38, sideWall:0.05, endWall:0.05, goal:{w:0.15,h:0.05,d:0.05}, kick:0,
     ball:{d:0.0315,m:0.0027,k:0.5,c:0.06,vmax:2,look:'pingpong'}, robot:{max:[0.05,0.05,0.08],def:[0.045,0.045,0.06],mass:0.1,v:0.5,turn:7,acc:4},
     teamSize:3, teamOpts:[2,3], halves:2, halfLen:120, breakLen:60, called:null, markings:'simple', kickoff:'center', five:false,
     rules:[
@@ -302,12 +317,12 @@ const RULESETS = {
       '로봇: 5 × 5 × 8 cm 이내(경기 중 7 × 7 × 10 cm까지), 100 g 이하(리모컨 제외), 바퀴 구동, 무선 리모컨 조종',
       '경기: 3 대 3, 전·후반 각 2분',
     ],
-    sim:['골대 크기가 규정에 없어 폭 15 cm · 높이 5 cm로 가정','하프타임 1분으로 가정','킥(슛) 모터: A 버튼'],
+    sim:['골대 크기가 규정에 없어 폭 15 cm · 높이 5 cm로 가정','하프타임 1분으로 가정','Micro 로봇에는 슛터(킥 모터)가 없음'],
   },
   krl_basic: {
     name:'MRC 축구 · KRL BASIC (참고 규정)', type:'soccer', src:'https://worldrobotleague.net/rules/mrc-soccer/',
     L:1.40, W:1.00, sideWall:0.08, endWall:0.08, goal:{w:0.40,h:0.12,d:0.10}, kick:2.5,
-    ball:{d:0.075,m:0.04,k:0.4,c:0.1,vmax:3.5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.17,0.17,0.12],mass:0.5,v:1.0,turn:6,acc:5},
+    ball:{d:0.075,m:0.04,k:0.4,c:0.1,vmax:3.5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:0.5,v:1.0,turn:6,acc:5},
     teamSize:2, teamOpts:[1,2,3], halves:2, halfLen:180, breakLen:60, called:10, markings:'simple', kickoff:'center', five:false,
     rules:[
       'KRL 규정집(Ver 24.09.24) — 적용 여부는 추후 확정',
@@ -322,23 +337,23 @@ const RULESETS = {
   krl_heavy: {
     name:'MRC 축구 · KRL HEAVY (참고 규정)', type:'soccer', src:'https://worldrobotleague.net/rules/mrc-soccer/',
     L:4.0, W:2.0, sideWall:0.15, endWall:0.15, goal:{w:0.80,h:0.30,d:0.30,pvc:true}, kick:3.5,
-    ball:{d:0.14,m:0.1,k:0.35,c:0.1,vmax:5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.18,0.18,0.14],mass:1.0,v:1.6,turn:6,acc:6},
+    ball:{d:0.14,m:0.1,k:0.35,c:0.1,vmax:5,look:'soccer'}, robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:1.0,v:1.6,turn:6,acc:6},
     teamSize:3, teamOpts:[2,3], halves:2, halfLen:180, breakLen:60, called:10, markings:'mrc', kickoff:'center', five:false,
     rules:['KRL HEAVY: 필드 400 × 200 cm, 공 140 mm / 100 g 이하, 로봇 20 × 20 × 20 cm · 1,000 g(+3 g)','전·후반 3분, 10점 콜드게임'],
     sim:['골대 80 cm 폭(MRC와 동일)으로 가정'],
   },
   krl_micro: {
     name:'MRC 축구 · KRL MICRO (참고 규정)', type:'soccer', src:'https://worldrobotleague.net/rules/mrc-soccer/',
-    L:0.62, W:0.44, sideWall:0.04, endWall:0.04, goal:{w:0.15,h:0.05,d:0.05}, kick:1.3,
+    L:0.62, W:0.44, sideWall:0.04, endWall:0.04, goal:{w:0.15,h:0.05,d:0.05}, kick:0,
     ball:{d:0.035,m:0.03,k:0.5,c:0.06,vmax:2,look:'pingpong'}, robot:{max:[0.05,0.05,0.05],def:[0.045,0.045,0.045],mass:0.08,v:0.5,turn:7,acc:4},
     teamSize:2, teamOpts:[1,2,3], halves:2, halfLen:180, breakLen:60, called:10, markings:'simple', kickoff:'center', five:false,
     rules:['KRL MICRO: 필드 62 × 44 cm, 공 35 mm / 30 g 이하, 로봇 5 × 5 × 5 cm · 80 g 이하, 3.7 V 이하','전·후반 3분, 10점 콜드게임'],
-    sim:['골대 폭 15 cm, 2 대 2로 가정'],
+    sim:['골대 폭 15 cm, 2 대 2로 가정','Micro 로봇에는 슛터(킥 모터)가 없음'],
   },
   roborave: {
     name:'로보레이브 SoccerBot RC (ES/MS/HS · 800 g)', type:'soccer', src:'https://worldrobotleague.net/rules/roborave/#soccer',
-    L:1.80, W:1.20, outerL:2.4, outerW:1.8, sideWall:0, endWall:0, goal:{w:0.50,h:0.10,d:0.12},
-    ball:{d:0.04267,m:0.04593,k:0.3,c:0.15,vmax:3,look:'golf'}, robot:{max:[0.15,0.15,0.15],def:[0.14,0.14,0.10],mass:0.8,v:1.2,turn:6,acc:5},
+    L:1.80, W:1.20, outerL:1.90, outerW:1.26, sideWall:0.05, endWall:0.05, goal:{w:0.50,h:0.10,d:0.12},
+    ball:{d:0.04267,m:0.04593,k:0.3,c:0.15,vmax:3,look:'golf'}, robot:{max:[0.15,0.15,0.15],def:[0.15,0.15,0.15],mass:0.8,v:1.2,turn:6,acc:5},
     teamSize:2, teamOpts:[1,2], halves:2, halfLen:90, breakLen:30, called:null, markings:'roborave', kickoff:'corners', five:true,
     rules:[
       '필드 1.20 × 1.80 m, 골 폭 0.50 m (공차 ±5%)',
@@ -352,18 +367,18 @@ const RULESETS = {
       '예선 승점: 승 3 · 무 1 · 패 0 / 본선 동점은 골든골',
       '재시작 30초 초과 지연 등은 상대 득점 또는 실격',
     ],
-    sim:['벽 규정이 없어 필드 둘레는 벽 없음, 바깥 0.3 m 지점까지 로봇 이동 가능','공이 나가면 시계 정지 후 나간 지점 안쪽에 다시 놓고 재개','골 깊이 12 cm로 가정'],
+    sim:['조종: MRC와 같은 Pybricks 코드식 바퀴 제어(D패드 · RT 파워 100/50), 슛터 없음','사이드라인과 골라인에 벽(높이 5 cm로 가정) — 골 입구만 열림','로봇 기본 크기 15 × 15 × 15 cm','골 깊이 12 cm로 가정'],
   },
   othello: {
     name:'로봇배틀 오셀로 (Junior / Senior)', type:'othello', src:'https://worldrobotleague.net/rules/othello/',
     arena:1.98, platformH:0.30,
-    robot:{max:[0.25,0.25,0.25],def:[0.22,0.22,0.12],mass:0.5,v:0.9,turn:5,acc:4},
+    robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:0.5,v:0.9,turn:5,acc:4},
     teamSize:1, teamOpts:[1,2], halves:1, halfLen:120, goldenLen:60, called:11,
     rules:[
       '경기장: 약 198 × 198 × 30 cm, 70 × 70 cm 정사각 패널 5장 + 삼각 패널 4장(팔각형), PET 바닥',
       '미션 블록 11개: 내 진영 5 · 상대 진영 5 · 중앙 중립 1',
       '원형 블록 Ø12 cm × 20 mm (25 g), 중앙 블록 12 × 12 cm × 20 mm (30 g), 양면 색이 다름',
-      '로봇: 25 × 25 × 25 cm 이내, 500 g(+3 g) 이하 · 방어 구조는 폭 25 cm, 네 면 중 한 면만',
+      '로봇: 20 × 20 × 20 cm 이내(운영 기준 · WRL 페이지 표기는 25 × 25 × 25 cm), 500 g(+3 g) 이하',
       '경기: 1:1 또는 2:2, 2분 · 11개 모두 내 색으로 만들면 콜드게임 승',
       '시간 종료 시 내 색 블록 1개 = 1점 · 동점이면 1분 골든포인트 → 경고 수 → 로봇 총무게 → 팀 나이',
       '스타트 타깃(노란 콘)을 먼저 치우기 전에 블록·상대 로봇과 접촉하면 즉시 실격',
@@ -743,6 +758,10 @@ function makeRobot(team, idx){
   r.body.addShape(r.shapeBox);
   r.body.angularFactor.set(0,1,0); r.body.userData={kind:'robot',ent:r}; world.addBody(r.body);
   r.visRoot=new THREE.Group(); r.visRoot.position.y=-r.H/2; r.visRoot.add(vis.object); r.mesh.add(r.visRoot);
+  if(RS.type==='othello'){ // 플립 팔 (C 모터)
+    r.armPivot=new THREE.Group(); r.armPivot.position.set(r.hl,-r.H/2+0.012,0);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.006,r.hw*1.5),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.5,roughness:0.35})); arm.position.x=0.035; arm.castShadow=true;
+    r.armPivot.add(arm); r.mesh.add(r.armPivot); r.armT=0; }
   if(RS.kick){ const kp=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.004,r.hl*0.06),r.H*0.35,r.hw*1.2),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.6,roughness:0.3}));
     kp.position.set(r.hl+kp.geometry.parameters.width/2,-r.H/2+r.H*0.25,0); kp.castShadow=true; r.kicker=kp; r.mesh.add(kp); }
   const ringR=Math.hypot(r.hl,r.hw)*1.05;
@@ -789,10 +808,18 @@ function setupOthelloObjects(){
     b.body.userData={kind:'block',ent:b}; teleport(b.body,x,0.0102,z,0); world.addBody(b.body); blocks.push(b); };
   const P=[[0.22,0.46],[0.22,-0.46],[0.46,0.20],[0.46,-0.20],[0.30,0]];
   for(const [x,z] of P){ mk(-x,z,0,false); mk(x,z,1,false); }
-  mk(0,0,-1,true);
+  // 가운데 네모판: 12 × 12 cm 판이 세워져 있음. 블루 진영(-x) 쪽 면은 파랑, 레드 진영(+x) 쪽 면은 빨강
+  { const b={x:0,z:0,vx:0,vz:0,r:0.068,m:0.03,square:true,board:true,home:-1,owner:-1,out:false,last:-1,mesh:new THREE.Group(),topTeam:1,botTeam:0,flipping:0};
+    const geo=new THREE.BoxGeometry(0.01,0.12,0.12);
+    b.top=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[1],roughness:0.7})); b.top.position.x=0.005;
+    b.bot=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[0],roughness:0.7})); b.bot.position.x=-0.005;
+    b.mesh.add(b.top,b.bot); b.top.castShadow=b.bot.castShadow=true; dynGroup.add(b.mesh);
+    b.body=new CANNON.Body({mass:b.m,material:MAT.block,linearDamping:0.3,angularDamping:0.3});
+    b.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01,0.06,0.06)));
+    b.body.userData={kind:'block',ent:b}; teleport(b.body,0,0.0602,0,0); world.addBody(b.body); blocks.push(b); }
 }
 const blockColor = o => o<0 ? '#f4f4f4' : TEAMCOL[o];
-function paintBlock(b){ b.top.material.color.set(blockColor(b.topTeam)); b.bot.material.color.set(blockColor(b.botTeam)); }
+function paintBlock(b){ if(b.board) return; b.top.material.color.set(blockColor(b.topTeam)); b.bot.material.color.set(blockColor(b.botTeam)); }
 function placeKickoff(){
   if(RS.type==='othello') return placeOthello();
   const L=RS.L, W=RS.W;
@@ -804,7 +831,7 @@ function placeKickoff(){
       else { const cr = RS.markings==='mrc'?0.40:W*0.15; const pos=[[cr+r.hl+0.03,0],[L*0.25,W*0.25],[L/2-Math.max(0.12,RS.goal.d*0.5)-r.hl,0],[L*0.25,-W*0.25]];
         if(list.length===2) pos[1]=[L*0.3,-W*0.18];
         const p=pos[i%4]; x=-ad*p[0]; z=p[1]*(t===0?1:-1); }
-      Object.assign(r,{x,z,th,vx:0,vz:0,w:0,out:false,fallT:0,stuckT:0,unstick:0}); teleport(r.body,x,r.H/2+0.001,z,th); });
+      Object.assign(r,{x,z,th,vx:0,vz:0,w:0,out:false,fallT:0,stuckT:0,unstick:0,wl:0,wr:0}); teleport(r.body,x,r.H/2+0.001,z,th); });
   }
   if(ball){ Object.assign(ball,{x:0,z:0,vx:0,vz:0,frozen:false,still:0}); teleport(ball.body,0,ball.r+0.0005,0); }
 }
@@ -848,10 +875,12 @@ function rumble(weak,strong,ms){ if(!S.rumble) return; const p=getPad(); try{ p?
 const dz=v=>{ const d=S.dead; return Math.abs(v)<d?0:Math.sign(v)*(Math.abs(v)-d)/(1-d); };
 const pressedEdge=(p,i)=>{ const now=!!p.buttons[i]?.pressed; const was=!!padPrev[i]; return now&&!was; };
 let camPrev=null;
+const MRCIN={};
 function pollInput(){
   const me=robots.find(r=>controller(r)==='me');
   let f=0,t=0,s=0,act=false,fine=false, fieldRel=false, fx=0, fz=0;
   if(me) me.cmd.estop=false;
+  Object.assign(MRCIN,{up:false,dn:false,lf:false,rg:false,p100:false,kick:false,B:false,X:false,pad:false,rt:0,a:false});
   // 키보드
   if(keys.has('KeyW')) f+=1; if(keys.has('KeyS')) f-=1; if(keys.has('KeyA')) t+=1; if(keys.has('KeyD')) t-=1;
   if(keys.has('KeyQ')) s+=1; if(keys.has('KeyE')) s-=1;
@@ -862,7 +891,15 @@ function pollInput(){
     const lx=dz(ax[0]||0), ly=dz(ax[1]||0), rx=dz(ax[2]||0), ry=dz(ax[3]||0);
     const lt=b(6), rt=b(7);
     let estop=false;
-    if(S.padMode==='dpad'){
+    if(S.padMode==='dpad' && RS.type==='othello'){
+      MRCIN.up=p.buttons[12]?.pressed; MRCIN.dn=p.buttons[13]?.pressed; MRCIN.lf=p.buttons[14]?.pressed; MRCIN.rg=p.buttons[15]?.pressed;
+      MRCIN.rt=rt; MRCIN.a=!!p.buttons[0]?.pressed; MRCIN.pad=true;
+    } else if(S.padMode==='dpad' && isMRC()){
+      MRCIN.up=p.buttons[12]?.pressed; MRCIN.dn=p.buttons[13]?.pressed; MRCIN.lf=p.buttons[14]?.pressed; MRCIN.rg=p.buttons[15]?.pressed;
+      MRCIN.p100 = !!(p.buttons[7]?.value>0.04 || p.buttons[7]?.pressed);   // triggers()[1] → power 100 / 50
+      MRCIN.kick = !!(p.buttons[6]?.value>0.04 || p.buttons[6]?.pressed);   // triggers()[0] → 킥
+      MRCIN.B=!!p.buttons[1]?.pressed; MRCIN.X=!!p.buttons[2]?.pressed; MRCIN.pad=true;
+    } else if(S.padMode==='dpad'){
       const up=p.buttons[12]?.pressed, dn=p.buttons[13]?.pressed, lf=p.buttons[14]?.pressed, rg=p.buttons[15]?.pressed;
       const pw = rt<0.04?0:rt;                          // RT 아날로그 = 파워
       const power = 0.5 + 0.5*pw;                       // D패드 기본 50% · RT 깊이에 따라 50→100%
@@ -878,11 +915,12 @@ function pollInput(){
     else if(S.padMode==='rc'){ f+=rt-lt; t+=-lx; }
     if(estop){ f=0; t=0; s=0; }
     if(me) me.cmd.estop=estop;
-    if(p.buttons[0]?.pressed) act=true;
-    if(p.buttons[1]?.pressed) fine=true;
+    const mrcPad = S.padMode==='dpad' && (isMRC() || RS.type==='othello');
+    if(p.buttons[0]?.pressed && !mrcPad) act=true;
+    if(p.buttons[1]?.pressed && !mrcPad) fine=true;
     if(pressedEdge(p,5)) switchRobot(1); if(pressedEdge(p,4)) switchRobot(-1);
     if(pressedEdge(p,3)) cycleCam();
-    if(pressedEdge(p,2)){ if(camMode!=='driver'){ camPrev=camMode; setCam('driver'); } else setCam(camPrev||'broadcast'); }
+    if(!mrcPad && pressedEdge(p,2)){ if(camMode!=='driver'){ camPrev=camMode; setCam('driver'); } else setCam(camPrev||'broadcast'); }
     if(pressedEdge(p,8)) refereeReset();
     if(pressedEdge(p,9)) pauseOrNext();
     padPrev=p.buttons.map(x=>x.pressed);
@@ -907,6 +945,24 @@ function pollInput(){
     me.cmd.f=clamp(f,-1,1); me.cmd.t=clamp(t,-1,1); me.cmd.s=clamp(s,-1,1); me.cmd.fine=fine; me.cmd.act=act;
     if(TOUCH.on && TOUCH.k.stop){ me.cmd.estop=true; me.cmd.f=me.cmd.t=me.cmd.s=0; }
     me.cmd.omni = S.drive==='omni';
+    me.cmd.wheel=null;
+    if(S.padMode==='dpad' && RS.type==='othello'){
+      const T=TOUCH.on?TOUCH.k:{};
+      const kU=keys.has('KeyW')||T.up, kD=keys.has('KeyS')||T.down, kL=keys.has('KeyA')||T.left, kR=keys.has('KeyD')||T.right;
+      const up=MRCIN.up||kU, dn=MRCIN.dn||kD, lf=MRCIN.lf||kL, rg=MRCIN.rg||kR;
+      let power=MRCIN.rt||0; if(kU||kD||kL||kR) power=Math.max(power,(keys.has('ShiftLeft')||keys.has('ShiftRight')||T.gas)?1:0.5);
+      me.cmd.wheel=othelloWheels(dpadCode(up,dn,lf,rg),power); me.mrcPower=Math.round(power*100);
+      me.cmd.act = MRCIN.a||keys.has('Space')||!!T.act;
+      me.cmd.estop=false; me.cmd.f=me.cmd.t=me.cmd.s=0; me.cmd.fine=false;
+    } else if(S.padMode==='dpad' && isMRC()){
+      const T=TOUCH.on?TOUCH.k:{};
+      const up=MRCIN.up||keys.has('KeyW')||T.up, dn=MRCIN.dn||keys.has('KeyS')||T.down, lf=MRCIN.lf||keys.has('KeyA')||T.left, rg=MRCIN.rg||keys.has('KeyD')||T.right;
+      const p100=MRCIN.p100||keys.has('ShiftLeft')||keys.has('ShiftRight')||!!T.gas;
+      const Bk=MRCIN.B||keys.has('KeyE'), Xk=MRCIN.X||keys.has('KeyQ');
+      me.cmd.wheel=mrcWheels(dpadCode(up,dn,lf,rg), p100?1:0.5, Bk, Xk); me.mrcPower=p100?100:50;
+      me.cmd.act = RS.kick>0 && (MRCIN.kick||keys.has('Space')||!!T.stop||!!T.act);
+      me.cmd.estop=false; me.cmd.f=me.cmd.t=me.cmd.s=0; me.cmd.fine=false;
+    }
   }
 }
 let padSelSig='';
@@ -927,6 +983,32 @@ function dpadMove(up,dn,lf,rg,power,me){
     if(Math.abs(t)>1){ f/=Math.abs(t); t=Math.sign(t); }  // 회전 속도 상한을 넘으면 같은 비율로 줄임
     return {f,t}; }
   return {f:0,t:0};
+}
+const isMRC=()=>/^(mrc_|krl_)/.test(RSKEY) || RSKEY==='roborave';   // MRC 축구 + 로보레이브 사커: Pybricks 코드식 바퀴 제어
+// Pybricks dpad() 번호: 0 없음, 1 ↑, 2 ↗, 3 →, 4 ↘, 5 ↓, 6 ↙, 7 ←, 8 ↖
+function dpadCode(up,dn,lf,rg){ if(up&&rg) return 2; if(dn&&rg) return 4; if(dn&&lf) return 6; if(up&&lf) return 8; if(up) return 1; if(rg) return 3; if(dn) return 5; if(lf) return 7; return 0; }
+// 첨부 Pybricks 코드(main1)와 같은 좌/우 모터 듀티. power: RT 누르면 1.0(100) 아니면 0.5(50)
+// 오셀로 첨부 코드: power = RT, left=(drive+steer)*power, right=(drive-steer)*power, 최대 100으로 정규화, D패드 놓으면 dc(0)
+function othelloWheels(code,power){
+  const M={1:[1,0],2:[1,1],3:[0,1],4:[-1,1],5:[-1,0],6:[-1,-1],7:[0,-1],8:[1,-1]}; const [d,st]=M[code]||[0,0];
+  let l=(d+st)*power, r=(d-st)*power; const m=Math.max(Math.abs(l),Math.abs(r)); if(m>1){ l/=m; r/=m; }
+  const brk = !d && !st;   // D패드 놓음 → 양쪽 브레이크
+  return {l,r,bl:brk,br:brk};
+}
+function mrcWheels(code,power,B,X){
+  let w={l:0,r:0,bl:false,br:false};
+  if(code===0) w={l:0,r:0,bl:true,br:true};                 // 브레이크
+  if(code===1) w={l:power,r:power};
+  if(code===5) w={l:-power,r:-power};
+  if(code===3) w={l:power,r:-power};                         // 오른쪽 포인트 턴
+  if(code===7) w={l:-power,r:power};                         // 왼쪽 포인트 턴
+  if(code===2) w={l:1.0,r:0.5};                              // ↗  Left 100 · Right 50
+  if(code===8) w={l:0.5,r:1.0};                              // ↖  Left 50 · Right 100
+  if(code===4) w={l:-1.0,r:-0.5};                            // ↘
+  if(code===6) w={l:-0.5,r:-1.0};                            // ↙
+  if(code===1 && B) w={l:power,r:0,br:true};                 // ↑+B: 왼쪽만 (오른쪽 브레이크)
+  if(code===1 && X) w={l:0,r:power,bl:true};                 // ↑+X: 오른쪽만 (왼쪽 브레이크)
+  w.bl=!!w.bl; w.br=!!w.br; return w;
 }
 const shortPad=id=> /xbox|xinput|045e/i.test(id) ? 'Xbox 컨트롤러' : id.replace(/\(.*?\)/g,'').trim().slice(0,28);
 function switchRobot(d){ if(S.teamSize<2 || NET.role!=='off') return; const list=robots.filter(r=>r.team===S.myTeam && !r.out); if(list.length<2) return;
@@ -1021,6 +1103,7 @@ function strikerMove(r,ad,gx,gz,v){
 const clampX=x=>clamp(x,-RS.L/2-0.05,RS.L/2+0.05), clampZ=z=>clamp(z,-RS.W/2+0.03,RS.W/2-0.03);
 function aiOthello(r, skill, dt){
   r.cmd.s=0; r.cmd.act=false;
+  if(r.armT>0){ r.cmd.f=0; r.cmd.t=0; return; }
   const edge=inPoly(r.x,r.z,F.poly);
   if(r.unstick>0){ r.unstick-=dt; r.cmd.f=-0.6; r.cmd.t=r.unstickDir; return; }
   const sp=Math.hypot(r.vx,r.vz);
@@ -1063,9 +1146,16 @@ function driveRobot(r,dt){
   const p=robotParams(r); const th=r.th; const fx=Math.cos(th),fz=-Math.sin(th),lx=-Math.sin(th),lz=-Math.cos(th);
   const vx=b.velocity.x, vz=b.velocity.z; const u=vx*fx+vz*fz, v=vx*lx+vz*lz;
   let tf=clamp(r.cmd.f,-1,1), ts=p.omni?clamp(r.cmd.s,-1,1):0; const m=Math.hypot(tf,ts); if(m>1){tf/=m;ts/=m;}
+  let wt=clamp(r.cmd.t,-1,1)*p.turn, accU=p.acc;
+  if(r.armT>0 && r.cmd.wheel) r.cmd.wheel={l:0,r:0,bl:true,br:true};   // 오셀로: 팔 동작 중 바퀴 브레이크
+  if(r.cmd.wheel){ // MRC: 좌/우 모터 듀티(dc). 모터 속도는 시정수만큼 서서히 따라감, 브레이크는 빠르게 멈춤
+    const W=r.cmd.wheel, TAU=0.22, TAUB=0.06; r.wl=r.wl||0; r.wr=r.wr||0;
+    r.wl+=(W.l-r.wl)*(1-Math.exp(-dt/(W.bl?TAUB:TAU))); r.wr+=(W.r-r.wr)*(1-Math.exp(-dt/(W.br?TAUB:TAU)));
+    tf=(r.wl+r.wr)/2; ts=0; wt=(r.wr-r.wl)/2*p.vmax/Math.max(r.hw,0.01)*0.75; accU=40;
+  } else { r.wl=0; r.wr=0; }
   // 목표 속도까지의 가속도 (모터 가속 한계) → 힘, 바퀴 견인 한계로 제한
-  const au=clamp((tf*p.vmax-u)/dt,-p.acc,p.acc);
-  const spinning = Math.abs(r.cmd.t)>0.1 && Math.abs(tf)<0.25;
+  const au=clamp((tf*p.vmax-u)/dt,-accU,accU);
+  const spinning = Math.abs(wt)>0.3 && Math.abs(tf)<0.25;
   // 벽에 붙은 채 제자리 회전: 회전 반경(원기둥)으로 충돌 → 모서리가 벽을 밀어내며 회전
   r.spinHold = spinning && r.wallT>0 ? 0.25 : Math.max(0,r.spinHold-dt);
   const want = r.spinHold>0 ? 'cyl' : 'box';
@@ -1081,7 +1171,7 @@ function driveRobot(r,dt){
   let Fx=r.mass*(au*fx+al*lx), Fz=r.mass*(au*fz+al*lz); const Fm=Math.hypot(Fx,Fz), Fmax=MU*r.mass*9.81;
   if(Fm>Fmax){ Fx*=Fmax/Fm; Fz*=Fmax/Fm; }
   b.force.x+=Fx; b.force.z+=Fz;
-  const wt=clamp(r.cmd.t,-1,1)*p.turn; b.angularVelocity.y=approach(b.angularVelocity.y,wt,p.turn*8*dt); r.wCmd=b.angularVelocity.y;
+  b.angularVelocity.y=approach(b.angularVelocity.y,wt,(r.cmd.wheel?60:p.turn*8)*dt); r.wCmd=b.angularVelocity.y;
   if(Math.abs(wt)>0.1){ const I=r.mass*(r.hl*r.hl+r.hw*r.hw)/3; b.torque.y+=clamp((wt-b.angularVelocity.y)*I/0.05,-MU*r.mass*9.81*Math.max(r.hl,r.hw),MU*r.mass*9.81*Math.max(r.hl,r.hw)); }
 }
 function obbAxes(r){ const c=Math.cos(r.th), s=Math.sin(r.th); return {f:[c,-s], l:[-s,-c]}; }
@@ -1091,7 +1181,7 @@ function syncEnt(e){ const b=e.body; e.x=b.position.x; e.z=b.position.z; e.y=b.p
 let contactPairs=new Set();
 function tryKick(r){
   if(!RS.kick || !ball || ball.frozen || r.kickCD>0) return;
-  r.kickCD=0.5; r.kickT=0.12;
+  r.kickCD=0.35; r.kickT=0.35;   // 킥 모터 −100% 150 ms 뒤 +100% 200 ms 복귀
   const [lx,ly]=toLocal(r,ball.x,ball.z);
   const reach = lx>r.hl-0.01 && lx<r.hl+ball.r*1.6+0.015 && Math.abs(ly)<r.hw*0.85+ball.r*0.3 && ball.y<ball.r*2.2;
   rumbleFor(r,0.15,0.35,70);
@@ -1106,12 +1196,13 @@ function physicsStep(dt){
   roleTimer-=dt; if(roleTimer<=0 && RS.type==='soccer'){ assignRoles(); roleTimer=0.3; }
   for(const r of robots){
     r.th=bodyYaw(r.body); syncEnt(r); r.w=r.body.angularVelocity.y;
-    r.kickCD=Math.max(0,r.kickCD-dt); r.kickT=Math.max(0,r.kickT-dt);
+    r.kickCD=Math.max(0,r.kickCD-dt); r.kickT=Math.max(0,r.kickT-dt); r.armT=Math.max(0,(r.armT||0)-dt);
     if(r.out){ continue; }
     const ctl=controller(r);
     if(!live){ r.cmd.f=r.cmd.t=r.cmd.s=0; r.cmd.act=false; }
     else if(ctl==='ai'){ const skill=r.team===S.myTeam?S.aiMate:S.aiOpp; if(RS.type==='soccer') aiSoccer(r,skill,dt); else aiOthello(r,skill,dt); }
     else if(ctl==='idle'){ r.cmd.f=r.cmd.t=r.cmd.s=0; r.cmd.act=false; }
+    if(ctl!=='me' && ctl!=='remote') r.cmd.wheel=null;
     else if(ctl==='remote'){ const c=NET.inputs.get(seatPeer(r)); if(c && live) Object.assign(r.cmd,c); else if(!c){ r.cmd.f=r.cmd.t=r.cmd.s=0; r.cmd.act=false; } }
     if(!live && G.phase!=='end'){ r.body.velocity.x*=0.8; r.body.velocity.z*=0.8; r.body.angularVelocity.y*=0.8; }
     driveRobot(r,dt);
@@ -1187,26 +1278,30 @@ function soccerChecks(dt){
     else G.five=0;
   }
 }
+const ARM_T=0.16;
 function othelloChecks(dt){
   for(const c of cones){ if(c.out) continue; if(c.y<-0.03){ c.out=true; c.robot.coneDone=true;
       if(c.team===S.myTeam){ banner('스타트 타깃 제거 ✓',0.9); rumble(0.3,0.3,120); } } }
   // 블록 방향 → 소유 팀 (윗면 색)
-  for(const b of blocks){ if(b.out) continue; const up=b.body.quaternion.vmult(new CANNON.Vec3(0,1,0)).y;
+  for(const b of blocks){ if(b.out) continue; const up=b.body.quaternion.vmult(b.board?new CANNON.Vec3(1,0,0):new CANNON.Vec3(0,1,0)).y;
     if(b.flipping>0) b.flipping-=dt;
-    if(Math.abs(up)>0.9 && b.y<0.03){ const o = up>0 ? b.topTeam : b.botTeam; b.owner=o; } }
+    if(b.board){ if(b.flipping<=0){ b.owner = up>0.9 && b.y<0.03 ? b.topTeam : (up<-0.9 && b.y<0.03 ? b.botTeam : (Math.abs(up)<0.3 ? -1 : b.owner)); } }
+    else if(Math.abs(up)>0.9 && b.y<0.03){ const o = up>0 ? b.topTeam : b.botTeam; b.owner=o; } }
   // 블록 뒤집기 (플립 기구: A)
   for(const r of robots){ r.actCD=Math.max(0,r.actCD-dt); if(r.out) continue;
     if(r.cmd.act && r.actCD<=0){ const {f,l}=obbAxes(r); let best=null, bd=1e9;
+      r.armT=ARM_T; r.actCD=ARM_T+0.05;   // A: C 모터 0°→90°→0° (1500°/s) — 그동안 구동 정지
       for(const b of blocks){ if(b.out||b.flipping>0||b.owner===r.team) continue; const [lx,ly]=toLocal(r,b.x,b.z);
-        if(lx>r.hl-0.03 && lx<r.hl+0.10+b.r && Math.abs(ly)<r.hw+0.03 && b.y<0.04 && lx<bd){ bd=lx; best=b; } }
-      if(best){ if(S.strict && !r.coneDone){ startViolation(r); return; }
-        const upNow=best.body.quaternion.vmult(new CANNON.Vec3(0,1,0)).y>0;
-        if(upNow){ best.botTeam=r.team; } else { best.topTeam=r.team; } paintBlock(best);
-        // 물리적으로 들어올려 180° 회전
-        const bv=best.body.velocity, av=best.body.angularVelocity; bv.set(f[0]*0.35+r.vx, 1.7, f[1]*0.35+r.vz); av.set(l[0]*10.5,0,l[1]*10.5);
-        best.flipping=0.8; best.last=r.team; r.actCD=0.35;
+        if(lx>r.hl-0.03 && lx<r.hl+0.10+b.r && Math.abs(ly)<r.hw+0.03 && b.y<(b.board?0.08:0.04) && lx<bd){ bd=lx; best=b; } }
+      if(best){ if(S.strict && !r.coneDone && G.phase==='play'){ startViolation(r); return; }
+        const bv=best.body.velocity, av=best.body.angularVelocity;
+        const standing = best.board && Math.abs(best.body.quaternion.vmult(new CANNON.Vec3(1,0,0)).y)<0.5;
+        if(standing){ // 세워진 판: 팔로 밀어 앞으로 넘어뜨림 → 로봇 쪽을 보던 면이 위로
+          bv.set(f[0]*0.6+r.vx, 0.4, f[1]*0.6+r.vz); av.set(-l[0]*9,0,-l[1]*9); }
+        else { if(!best.board){ const upNow=best.body.quaternion.vmult(new CANNON.Vec3(0,1,0)).y>0; if(upNow){ best.botTeam=r.team; } else { best.topTeam=r.team; } paintBlock(best); }
+          bv.set(f[0]*0.35+r.vx, 1.7, f[1]*0.35+r.vz); av.set(l[0]*10.5,0,l[1]*10.5); }
+        best.flipping=0.8; best.last=r.team;
         rumbleFor(r,0.5,0.2,90); beep(900,0.08,0.04,'triangle'); }
-      else r.actCD=0.15;
     } }
   // 링아웃 (경기장 밖으로 나가면 기울어져 떨어짐)
   for(const r of robots){ if(r.out) continue;
@@ -1301,7 +1396,8 @@ function syncVisuals(dt){
   for(const r of robots){
     const b=r.body; r.mesh.position.set(b.position.x,b.position.y,b.position.z); r.mesh.quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w);
     r.mesh.visible = !(r.out && b.position.y < -F.H*0.5-0.5);
-    if(r.kicker){ const k=r.kickT>0? Math.sin((1-r.kickT/0.12)*Math.PI) : 0; r.kicker.position.x=r.hl+r.kicker.geometry.parameters.width/2+k*Math.max(0.01,r.hl*0.25); }
+    if(r.armPivot){ const e=ARM_T-(r.armT||0); const a = r.armT>0 ? (e<ARM_T/2 ? e/(ARM_T/2) : (ARM_T-e)/(ARM_T/2)) : 0; r.armPivot.rotation.z=a*Math.PI/2; }
+    if(r.kicker){ const e=0.35-r.kickT; const k=r.kickT>0 ? (e<0.15 ? e/0.15 : Math.max(0,1-(e-0.15)/0.2)) : 0; r.kicker.position.x=r.hl+r.kicker.geometry.parameters.width/2+k*Math.max(0.01,r.hl*0.25); }
     const me=controller(r)==='me'; const close=(camMode==='follow'); r.meLabel.visible=me && !close; r.label.visible=!(me&&close)&&!r.out; r.ring.visible=!r.out; r.ring.material.opacity= me?1:0.55;
   }
   if(ball){ const b=ball.body; ball.mesh.position.set(b.position.x,b.position.y,b.position.z); ball.mesh.quaternion.set(b.quaternion.x,b.quaternion.y,b.quaternion.z,b.quaternion.w); }
@@ -1323,7 +1419,7 @@ function updateHUD(){
   $('#clock').textContent = (S.practice||G.phase==='free') ? '∞' : (RS.type==='soccer'&&G.golden? 'GG' : fmt(G.clock));
   const me=robots.find(r=>controller(r)==='me');
   let side=`<b>${RS.name}</b><br>나: ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번 · 상대 ${S.oppMode==='ai'?'AI':'정지'} · 팀원 ${S.mateMode==='ai'?'AI':'정지'}`;
-  if(me) side+=`<br>속도 ${Math.hypot(me.vx,me.vz).toFixed(2)} m/s`+(me.cmd.estop?' <span class="warn"><b>■ 비상정지</b></span>':'');
+  if(me) side+=`<br>속도 ${Math.hypot(me.vx,me.vz).toFixed(2)} m/s`+(me.cmd.wheel?` · 파워 ${me.mrcPower}`:'')+(me.cmd.estop?' <span class="warn"><b>■ 비상정지</b></span>':'');
   if(RS.type==='othello' && S.strict){ const c=cones.filter(c=>c.team===S.myTeam && !c.out).length; if(c) side+='<br><span class="warn">⚠ 제자리 회전으로 뒤쪽 노란 콘(스타트 타깃)을 경기장 밖으로 떨어뜨리세요</span>'; }
   if(G.five>0.5) side+=`<br><span class="warn">5초 룰 ${(5-G.five).toFixed(1)}</span>`;
   if(G.phase==='end' && G.endMsg) side+=`<br><span class="ok">${G.endMsg}</span>`;
@@ -1383,7 +1479,8 @@ function hostOnData(conn,d){
     if(!seat){ conn.send({type:'full'}); setTimeout(()=>conn.close(),800); return; }
     NET.seats.set(conn.peer,{...seat,name:String(d.name||'게스트').slice(0,12)}); NET.conns.set(conn.peer,conn);
     conn.send(configMsg(conn.peer)); banner(NET.seats.get(conn.peer).name+' 참가 — '+TEAMNAME[seat.team]+' '+(seat.idx+1)+'번',1.5); netScheduleConfig(); netPlayersUI(); }
-  else if(d.type==='input'){ const c=d.c||{}; NET.inputs.set(conn.peer,{f:clamp(+c.f||0,-1,1),t:clamp(+c.t||0,-1,1),s:clamp(+c.s||0,-1,1),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni}); }
+  else if(d.type==='input'){ const c=d.c||{}; NET.inputs.set(conn.peer,{f:clamp(+c.f||0,-1,1),t:clamp(+c.t||0,-1,1),s:clamp(+c.s||0,-1,1),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni,
+    wheel: c.wheel ? {l:clamp(+c.wheel.l||0,-1,1),r:clamp(+c.wheel.r||0,-1,1),bl:!!c.wheel.bl,br:!!c.wheel.br} : null}); }
   else if(d.type==='model'){ const s=NET.seats.get(conn.peer); if(s && d.m && (d.m.kind==='stl'||d.m.kind==='ldraw')) importModelData(d.m,s.team,s.idx); }
 }
 async function netJoin(){
@@ -1442,7 +1539,7 @@ function lerpBody(b,a,k){ b.position.x+= (a[0]-b.position.x)*k; b.position.y+=(a
   const q=new CANNON.Quaternion(a[3],a[4],a[5],a[6]); b.quaternion.slerp(q,k,b.quaternion); }
 function netClientFrame(dt){
   const me=robots.find(r=>controller(r)==='me');
-  NET.sendT+=dt; if(me && NET.sendT>=1/40){ NET.sendT=0; const c=me.cmd; netSend({type:'input',c:{f:+c.f.toFixed(3),t:+c.t.toFixed(3),s:+c.s.toFixed(3),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni}}); }
+  NET.sendT+=dt; if(me && NET.sendT>=1/40){ NET.sendT=0; const c=me.cmd; netSend({type:'input',c:{f:+c.f.toFixed(3),t:+c.t.toFixed(3),s:+c.s.toFixed(3),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni,wheel:c.wheel}}); }
   const d=NET.target; if(!d) return; const k=1-Math.exp(-dt*18);
   const g=d.g; G.phase=g[0]; G.clock=g[1]; G.half=g[2]; G.score=[g[3],g[4]]; G.swap=!!g[5]; G.golden=!!g[6]; G.paused=!!g[7]; G.five=g[8]; G.t=g[9]; G.endMsg=d.em;
   if(d.r.length!==robots.length) return;
