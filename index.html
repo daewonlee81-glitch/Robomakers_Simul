@@ -127,7 +127,7 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <h1>대회연습용 조종 시뮬레이터</h1>
       <p>MRC 축구 · 로보레이브 SoccerBot RC · 로봇배틀 오셀로 (worldrobotleague.net 규칙)</p>
       <p>🎮 <b>엑스박스 컨트롤러</b>를 PC에 블루투스로 페어링한 뒤 <b>아무 버튼이나 한 번 누르면</b> 연결됩니다. 내 로봇 1대를 조종하고, 상대 팀과 우리 팀의 나머지 로봇은 AI가 움직입니다.</p>
-      <p class="note">아래 스위치를 켜야 컨트롤러 입력이 시뮬레이터에 연결됩니다(화면 왼쪽 아래 스위치 · G 키로도 전환).<br>D패드: ↑↓ 이동 · ←→ 포인트 턴 (기본 50%) · RT: 파워 50→100% · LT: 비상정지 · A: 슛(MRC) / 플립(오셀로) · RB: 조종 로봇 변경 · Y: 카메라 · View: 재배치 · Menu: 일시정지<br>키보드: W/S 전후진 · A/D 회전 · Q/E 옆이동(옴니) · Space 액션 · F 로봇 변경 · C 카메라 · R 재배치 · P 일시정지</p>
+      <p class="note">아래 스위치를 켜야 컨트롤러 입력이 시뮬레이터에 연결됩니다(화면 왼쪽 아래 스위치 · G 키로도 전환).<br>D패드: ↑↓ 이동 · ←→ 포인트 턴 · 대각선 스윙턴 (기본 50%) · RT: 파워 50→100% · LT: 비상정지 · A: 슛(MRC) / 플립(오셀로) · RB: 조종 로봇 변경 · Y: 카메라 · View: 재배치 · Menu: 일시정지<br>키보드: W/S 전후진 · A/D 회전 · Q/E 옆이동(옴니) · Space 액션 · F 로봇 변경 · C 카메라 · R 재배치 · P 일시정지</p>
       <label class="row" style="justify-content:flex-start;gap:10px;margin:12px 0 4px"><span class="sw"><input type="checkbox" id="padOn0"><span></span></span><span>엑스박스 컨트롤러 연결</span></label>
       <div class="btns"><button class="btn pri" id="startBtn">클릭해서 시작</button></div>
     </div></div>
@@ -213,8 +213,9 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <table class="keys">
         <tr><td colspan="2"><b>대회 방식 (기본)</b></td></tr>
         <tr><td>D패드 ↑ / ↓</td><td>전진 / 후진 — 기본 50% 파워</td></tr>
-        <tr><td>D패드 ← / →</td><td>포인트 턴 — 로봇 중심에서 제자리 회전 (↑/↓를 같이 눌러도 회전만) — 기본 50%</td></tr>
-        <tr><td>RT</td><td>파워 조절 — 누르는 깊이만큼 50% → 100% (RT만 누르면 전진)</td></tr>
+        <tr><td>D패드 ← / →</td><td>포인트 턴 — 로봇 중심에서 제자리 회전 (파워를 올려도 제자리 회전)</td></tr>
+        <tr><td>D패드 대각선 ↖ ↗ ↙ ↘</td><td>스윙턴 — 안쪽 바퀴를 축으로 바깥 바퀴만 돌며 회전</td></tr>
+        <tr><td>RT</td><td>파워 조절 — 누르는 깊이만큼 50% → 100% (RT만으로는 움직이지 않음)</td></tr>
         <tr><td>LT</td><td>비상정지 (누르는 동안 즉시 정지, 다른 입력 무시)</td></tr>
         <tr><td>A</td><td>MRC 축구: 슛 (킥 모터) · 오셀로: 블록 뒤집기 (플립)</td></tr>
         <tr><td colspan="2"><b>다른 방식</b></td></tr>
@@ -863,12 +864,9 @@ function pollInput(){
     let estop=false;
     if(S.padMode==='dpad'){
       const up=p.buttons[12]?.pressed, dn=p.buttons[13]?.pressed, lf=p.buttons[14]?.pressed, rg=p.buttons[15]?.pressed;
-      const gas = rt<0.04?0:rt;                         // RT 아날로그
-      const power = 0.5 + 0.5*gas;                      // D패드 기본 50% · RT 깊이에 따라 50→100%
-      let df = (up?1:0)-(dn?1:0), dt2 = (lf?1:0)-(rg?1:0);
-      if(dt2) df=0;                                     // ←/→ = 포인트 턴 (전후진 없이 제자리 회전)
-      if(!df && !dt2 && gas>0) df=1;                    // D패드 없이 RT만 누르면 전진
-      f += df*power; t += dt2*power;
+      const pw = rt<0.04?0:rt;                          // RT 아날로그 = 파워
+      const power = 0.5 + 0.5*pw;                       // D패드 기본 50% · RT 깊이에 따라 50→100%
+      const dm=dpadMove(up,dn,lf,rg,power,me); f+=dm.f; t+=dm.t;
       if(lt>0.25) estop=true;                           // LT = 비상정지
     } else if(S.drive==='omni'){
       if(S.omniRef==='field'){ fieldRel=true; fx=lx; fz=ly; }
@@ -899,7 +897,7 @@ function pollInput(){
   }
   $('#padled').className='padled'+(p?' live':(S.padOn?' wait':'')); $('#padbox').classList.toggle('on',!!p);
   updatePadSel();
-  if(TOUCH.on){ const T=TOUCH.k; const power=T.gas?1:0.5; let df=(T.up?1:0)-(T.down?1:0), dt2=(T.left?1:0)-(T.right?1:0); if(dt2) df=0; if(!df&&!dt2&&T.gas) df=1; f+=df*power; t+=dt2*power; if(T.act) act=true; }
+  if(TOUCH.on){ const T=TOUCH.k; const dm=dpadMove(T.up,T.down,T.left,T.right,T.gas?1:0.5,me); f+=dm.f; t+=dm.t; if(T.act) act=true; }
   if(me){
     if(fieldRel && me){ // 조종자 시점 기준: 스틱 위 = 화면 위쪽(카메라 기준)
       const cf=new THREE.Vector3(); camera.getWorldDirection(cf); cf.y=0; cf.normalize(); const cr=new THREE.Vector3(-cf.z,0,cf.x);
@@ -917,6 +915,19 @@ function updatePadSel(){ const pads=listPads(); const sig=pads.map(p=>p.index+p.
 function setPadOn(on){ S.padOn=on; for(const id of ['#padOn','#padOn0','#padOn2']) $(id).checked=on; try{ localStorage.setItem('sim.padOn',on?'1':'0'); }catch(e){}
   padPrev=[]; if(on){ const p=getPad(); if(p){ banner('🎮 컨트롤러 연결됨',1.2); rumble(0.4,0.4,150); } else banner('컨트롤러 버튼을 한 번 누르세요',1.5); }
   else { banner('컨트롤러 연결 해제 — 키보드',1.2); const me=robots.find(r=>controller(r)==='me'); if(me){ me.cmd.f=me.cmd.t=me.cmd.s=0; } } }
+// D패드 대회 방식: ↑↓ 전후진 · ←→ 포인트 턴 · 대각선 스윙턴 (안쪽 바퀴 정지, 바깥 바퀴만 power)
+function dpadMove(up,dn,lf,rg,power,me){
+  const df=(up?1:0)-(dn?1:0), dl=(lf?1:0)-(rg?1:0);
+  if(dl && !df) return {f:0,t:dl*power};                  // 포인트 턴: 제자리 회전
+  if(df && !dl) return {f:df*power,t:0};                  // 직진 / 후진
+  if(df && dl){                                           // 스윙턴: 중심 속도 = 바깥 바퀴의 절반, ω = v/(2·반폭)
+    const vmax=S.vmax, turn=S.turn, hw=me?Math.max(me.hw,0.005):0.08;
+    let f=df*power/2, w=Math.abs(f*vmax)/hw;              // 안쪽 바퀴가 멈춘 채 도는 각속도
+    let t=dl*(df>0?1:-1)*w/turn;                          // 후진 대각선: 뒤쪽이 그 방향으로 돌아감
+    if(Math.abs(t)>1){ f/=Math.abs(t); t=Math.sign(t); }  // 회전 속도 상한을 넘으면 같은 비율로 줄임
+    return {f,t}; }
+  return {f:0,t:0};
+}
 const shortPad=id=> /xbox|xinput|045e/i.test(id) ? 'Xbox 컨트롤러' : id.replace(/\(.*?\)/g,'').trim().slice(0,28);
 function switchRobot(d){ if(S.teamSize<2 || NET.role!=='off') return; const list=robots.filter(r=>r.team===S.myTeam && !r.out); if(list.length<2) return;
   let i=list.findIndex(r=>r.idx===S.myRobot); i=(i+d+list.length)%list.length; S.myRobot=list[i].idx; $('#myRobot').value=S.myRobot; rumble(0.2,0,60); }
@@ -1312,7 +1323,7 @@ function updateHUD(){
   $('#clock').textContent = (S.practice||G.phase==='free') ? '∞' : (RS.type==='soccer'&&G.golden? 'GG' : fmt(G.clock));
   const me=robots.find(r=>controller(r)==='me');
   let side=`<b>${RS.name}</b><br>나: ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번 · 상대 ${S.oppMode==='ai'?'AI':'정지'} · 팀원 ${S.mateMode==='ai'?'AI':'정지'}`;
-  if(me) side+=`<br>속도 ${Math.hypot(me.vx,me.vz).toFixed(2)} m/s`+(me.cmd.estop?' <span class="warn"><b>■ 비상정지(LT)</b></span>':'');
+  if(me) side+=`<br>속도 ${Math.hypot(me.vx,me.vz).toFixed(2)} m/s`+(me.cmd.estop?' <span class="warn"><b>■ 비상정지</b></span>':'');
   if(RS.type==='othello' && S.strict){ const c=cones.filter(c=>c.team===S.myTeam && !c.out).length; if(c) side+='<br><span class="warn">⚠ 제자리 회전으로 뒤쪽 노란 콘(스타트 타깃)을 경기장 밖으로 떨어뜨리세요</span>'; }
   if(G.five>0.5) side+=`<br><span class="warn">5초 룰 ${(5-G.five).toFixed(1)}</span>`;
   if(G.phase==='end' && G.endMsg) side+=`<br><span class="ok">${G.endMsg}</span>`;
