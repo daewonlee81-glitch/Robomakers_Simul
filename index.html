@@ -57,6 +57,8 @@ a{color:#58a6ff}
 #hud .per{font-size:11px;color:var(--mute)}
 #banner{position:absolute;top:36%;left:50%;transform:translate(-50%,-50%);font-size:clamp(20px,2.6vw,40px);max-width:90%;font-weight:800;text-shadow:0 3px 12px #000;pointer-events:none;text-align:center;white-space:pre-line;opacity:0;transition:opacity .2s}
 #banner.show{opacity:1}
+#banner.big{font-size:clamp(60px,12vw,160px);color:#fff;-webkit-text-stroke:2px #000;animation:pop .85s ease-out}
+@keyframes pop{0%{transform:translate(-50%,-50%) scale(1.6);opacity:0}25%{transform:translate(-50%,-50%) scale(1);opacity:1}100%{transform:translate(-50%,-50%) scale(.9);opacity:1}}
 #padbox{position:absolute;left:10px;bottom:10px;background:#0d1117e6;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:10px;z-index:3;max-width:60%}
 #padbox.on{border-color:var(--acc)}
 .sw{position:relative;display:inline-block;width:42px;height:22px;flex:none;cursor:pointer}
@@ -761,7 +763,7 @@ function setupMatch(){
   } else setupOthelloObjects();
   G.score=[0,0]; G.endMsg=''; G.half=1; G.swap=false; G.golden=false; G.ended=false; G.winner=-1; G.warn=[0,0];
   G.clock=RS.halfLen; G.five=0;
-  placeKickoff(); setPhase('countdown');
+  placeKickoff(); setPhase('countdown',true);
   updateSlotsUI();
   if((NET.role==='host' || BC.viewers>0) && !NET.applying) netScheduleConfig();
 }
@@ -814,7 +816,8 @@ function placeOthello(){
         dynGroup.add(c.mesh); cones.push(c); }
     }); }
 }
-function setPhase(p){ G.phase=p; G.t=0; }
+function setPhase(p,long=false){ G.phase=p; G.t=0; G.cd=null; if(p==='countdown') G.cdLong=long; }
+function bigCount(txt,dur=0.85){ banner(txt,dur); const el=$('#banner'); el.classList.add('big'); clearTimeout(bigCount.t); bigCount.t=setTimeout(()=>el.classList.remove('big'),dur*1000); }
 
 /* ===================== 입력: 엑스박스 컨트롤러 + 키보드 ===================== */
 const keys=new Set();
@@ -1104,8 +1107,10 @@ function banner(text,dur=1.6,local=false){ if((NET.role==='host' || BC.viewers>0
 function ruleStep(dt){
   G.t+=dt;
   switch(G.phase){
-    case 'countdown': { const n=Math.ceil(1.5-G.t); if(n!==G.cd){ G.cd=n; if(n>0) banner(n===1?'준비':'준비',0.6); }
-      if(G.t>=1.5){ setPhase(S.practice?'free':'play'); whistle(); banner(G.golden?(RS.type==='othello'?'골든포인트!':'골든골!'):'시작!',0.8); } break; }
+    case 'countdown': { const len=G.cdLong?3:1.5;
+      if(G.cdLong){ const n=3-Math.floor(G.t); if(n!==G.cd && n>0){ G.cd=n; bigCount(String(n)); beep(880,0.15,0.07,'square'); } }
+      else { const n=Math.ceil(1.5-G.t); if(n!==G.cd){ G.cd=n; if(n>0) banner('준비',0.6); } }
+      if(G.t>=len){ setPhase(S.practice?'free':'play'); whistle(); if(G.cdLong) bigCount(G.golden?(RS.type==='othello'?'골든포인트!':'골든골!'):'스타트!',0.9); else banner(G.golden?(RS.type==='othello'?'골든포인트!':'골든골!'):'시작!',0.8); G.cdLong=false; } break; }
     case 'play': case 'free':
       if(G.phase==='play' && !(RS.type==='soccer' && G.golden)){ G.clock-=dt; if(G.clock<=0){ G.clock=0; return endPeriod(); } }
       if(RS.type==='soccer') soccerChecks(dt); else othelloChecks(dt);
@@ -1186,15 +1191,15 @@ function endPeriod(){
   whistle();
   if(RS.type==='othello'){
     const [a,b]=G.score; if(a!==b) return finish(a>b?0:1,'시간 종료 '+a+' : '+b);
-    if(S.tie==='golden' && !G.golden){ G.golden=true; G.clock=RS.goldenLen; banner('동점 — 1분 골든포인트',2); setPhase('countdown'); return; }
+    if(S.tie==='golden' && !G.golden){ G.golden=true; G.clock=RS.goldenLen; banner('동점 — 1분 골든포인트',2); setPhase('countdown',true); return; }
     return finish(-1, G.golden?'동점 — 판정: 경고 수 → 로봇 무게 → 팀 나이':'시간 종료 — 무승부');
   }
   if(G.half<RS.halves){ setPhase('half'); banner('전반 종료\n하프타임 · 진영 교체',2.5); $('#btnNext').style.display=''; return; }
   const [a,b]=G.score;
-  if(a===b && S.tie==='golden'){ G.golden=true; banner('동점 — 골든골',2); placeKickoff(); setPhase('countdown'); return; }
+  if(a===b && S.tie==='golden'){ G.golden=true; banner('동점 — 골든골',2); placeKickoff(); setPhase('countdown',true); return; }
   finish(a===b?-1:(a>b?0:1), a===b?'무승부 (승점 1)':'경기 종료');
 }
-function startNextHalf(){ if(G.phase!=='half') return; G.half++; G.swap=!G.swap; G.clock=RS.halfLen; $('#btnNext').style.display='none'; placeKickoff(); setPhase('countdown'); banner('후반 시작',1); }
+function startNextHalf(){ if(G.phase!=='half') return; G.half++; G.swap=!G.swap; G.clock=RS.halfLen; $('#btnNext').style.display='none'; placeKickoff(); setPhase('countdown',true); banner('후반 시작',1); }
 function finish(w,why){ G.winner=w; setPhase('end'); G.ended=true; const t= w<0 ? '무승부' : TEAMNAME[w]+' 승리'; banner(t+'\n'+why,5); G.endMsg=t+' — '+why; if(w===S.myTeam) rumble(0.5,0.5,500); }
 function refereeReset(){ if(NET.role==='client') return banner('재배치는 방장만 할 수 있습니다',1,true); if(G.phase==='end'||G.phase==='idle') return; placeKickoff(); setPhase('countdown'); banner('심판 재배치',0.8); }
 function pauseOrNext(){ if(NET.role==='client') return banner('일시정지는 방장만 할 수 있습니다',1,true); if(G.phase==='half') return startNextHalf(); G.paused=!G.paused; banner(G.paused?'일시정지':'재개',0.8); }
@@ -1355,7 +1360,7 @@ async function netJoin(){
 async function clientOnData(d){
   if(!d||!d.type) return;
   if(d.type==='s'){ NET.target=d; return; }
-  if(d.type==='banner') return banner(d.text,d.dur,true);
+  if(d.type==='banner'){ banner(d.text,d.dur,true); const big=/^([123]|스타트!|골든골!|골든포인트!)$/.test(d.text); $('#banner').classList.toggle('big',big); if(/^[123]$/.test(d.text)) beep(880,0.15,0.07,'square'); return; }
   if(d.type==='whistle') return whistle(true);
   if(d.type==='rumble') return rumble(d.w,d.s,d.ms);
   if(d.type==='full'){ netStatus('<span class="warn">빈 자리가 없습니다</span>'); return netLeave(); }
