@@ -69,6 +69,10 @@ a{color:#58a6ff}
 .padled{width:9px;height:9px;border-radius:50%;background:#6e7681;flex:none}
 .padled.wait{background:#f0b429;animation:blink 1s infinite}.padled.live{background:#3fb950;box-shadow:0 0 6px #3fb950}
 @keyframes blink{50%{opacity:.3}}
+#pipFrame{position:absolute;border:2px solid #ffffffaa;border-radius:6px;pointer-events:auto;cursor:pointer;display:none;box-shadow:0 2px 10px #0008}
+#pipFrame span{position:absolute;left:6px;top:4px;font-size:11px;background:#000a;padding:1px 6px;border-radius:4px}
+body.spectator #panel, body.spectator #touch, body.spectator #padbox, body.spectator #togglePanel, body.spectator #overlay, body.spectator #side{display:none!important}
+body.spectator #hud{transform:translateX(-50%) scale(1.5);transform-origin:top center;top:14px}
 #camstat{position:absolute;right:10px;bottom:10px;background:#0d1117cc;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;pointer-events:none}
 #togglePanel{position:absolute;right:10px;top:10px;z-index:3}
 #overlay{position:absolute;inset:0;background:#0b0f14d9;display:flex;align-items:center;justify-content:center;z-index:5}
@@ -111,6 +115,7 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
     <div id="camstat"></div>
     <button class="btn" id="togglePanel" title="설정 패널 (Tab)">☰</button>
     <div id="netBadge"></div>
+    <div id="pipFrame" title="클릭: 큰 화면과 바꾸기"><span>📺 중계 (옆)</span></div>
     <div id="touch">
       <div class="grp"><button data-k="left">◀</button><button data-k="down">▼<br><small>후진</small></button><button data-k="right">▶</button></div>
       <div class="grp"><button data-k="stop" class="stop">LT<br><small>정지</small></button><button data-k="act">A<br><small>슛/플립</small></button><button data-k="gas" class="gas">RT<br><small>액셀</small></button></div>
@@ -198,6 +203,11 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
       <label class="row"><span>데드존</span><input type="range" id="dead" min="0.02" max="0.35" step="0.01" value="0.12"></label>
       <label class="row"><span>진동 피드백</span><input type="checkbox" id="rumble" checked></label>
       <label class="row"><span>터치 조종 버튼 (태블릿)</span><input type="checkbox" id="touchOn"></label>
+      <h3>중계 화면</h3>
+      <label class="row"><span>작은 중계 화면 계속 표시 (V)</span><input type="checkbox" id="pipOn" checked></label>
+      <label class="row"><span>크기</span><select id="pipSize"><option value="0.24">작게</option><option value="0.32" selected>보통</option><option value="0.42">크게</option></select></label>
+      <div class="btns"><button class="btn" id="btnBroadcastWin">📺 중계 전용 창 열기 (프로젝터·두 번째 모니터)</button></div>
+      <div class="note" id="bcNote">새 창에 옆에서 본 중계 화면만 크게 띄웁니다. 창을 두 번째 모니터로 옮겨 전체 화면(F11)으로 쓰세요. 이 창에서 진행되는 경기가 그대로 나옵니다.</div>
       <table class="keys">
         <tr><td colspan="2"><b>대회 방식 (기본)</b></td></tr>
         <tr><td>D패드 ← / →</td><td>방향 전환 (좌/우 회전, 정지 중에도 제자리 회전)</td></tr>
@@ -222,7 +232,7 @@ body.client #tab-game input, body.client #tab-game select, body.client #tab-game
         <tr><td>Shift</td><td>정밀 모드</td></tr>
         <tr><td>Space</td><td>슛 / 플립</td></tr>
         <tr><td>F</td><td>조종 로봇 변경</td></tr>
-        <tr><td>C · 1~6</td><td>카메라 전환 / 직접 선택 (우리 진영 뒤 롱뷰, 탑, 중계, 조종석, 추적, 자유)</td></tr>
+        <tr><td>C · 1~6</td><td>카메라 전환 / 직접 선택 (우리 골대 뒤, 탑, 중계(옆), 조종석, 추적, 자유) · V: 중계 화면 켜기/끄기</td></tr>
         <tr><td>G</td><td>컨트롤러 연결 켜기/끄기</td></tr>
         <tr><td>R · P · Tab</td><td>재배치 · 일시정지 · 설정 패널</td></tr>
       </table>
@@ -393,7 +403,7 @@ function beep(freq=2200,dur=0.25,vol=0.08,type='square'){
     o.type=type; o.frequency.value=freq; g.gain.value=vol; o.connect(g); g.connect(actx.destination); const t=actx.currentTime;
     g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.start(t); o.stop(t+dur+0.02);}catch(e){}
 }
-const whistle=(local)=>{ if(typeof NET!=='undefined' && NET.role==='host' && !local) netBroadcast({type:'whistle'}); beep(2600,0.18,0.06);setTimeout(()=>beep(2600,0.35,0.06),220);};
+const whistle=(local)=>{ if(typeof NET!=='undefined' && (NET.role==='host'||BC.viewers>0) && !local) netBroadcast({type:'whistle'}); beep(2600,0.18,0.06);setTimeout(()=>beep(2600,0.35,0.06),220);};
 
 /* ===================== 설정 상태 ===================== */
 let RS = RULESETS.mrc_open, RSKEY='mrc_open';
@@ -732,6 +742,7 @@ function makeRobot(team, idx){
   return r;
 }
 function controller(r){
+  if(NET.role==='spectator') return 'net';
   if(NET.role==='client') return (r.team===S.myTeam && r.idx===S.myRobot) ? 'me' : 'net';
   if(NET.role==='host' && seatPeer(r)) return 'remote';
   if(r.team===S.myTeam) return r.idx===S.myRobot ? 'me' : S.mateMode;
@@ -752,7 +763,7 @@ function setupMatch(){
   G.clock=RS.halfLen; G.five=0;
   placeKickoff(); setPhase('countdown');
   updateSlotsUI();
-  if(NET.role==='host' && !NET.applying) netScheduleConfig();
+  if((NET.role==='host' || BC.viewers>0) && !NET.applying) netScheduleConfig();
 }
 function setupOthelloObjects(){
   const mk=(x,z,home,square)=>{ const b={x,z,vx:0,vz:0,r:square?0.068:0.06,m:square?0.03:0.025,square,home,owner:home,out:false,last:-1,mesh:new THREE.Group(),
@@ -902,6 +913,7 @@ window.addEventListener('keydown',e=>{
   keys.add(e.code);
   if(e.code==='KeyF') switchRobot(1);
   if(e.code==='KeyG') setPadOn(!S.padOn);
+  if(e.code==='KeyV') setPip(!PIP.on);
   if(e.code==='KeyC') cycleCam();
   if(e.code==='KeyR') refereeReset();
   if(e.code==='KeyP'||e.code==='Escape') pauseOrNext();
@@ -1088,7 +1100,7 @@ function physicsStep(dt){
 }
 
 /* ===================== 규칙 / 경기 진행 ===================== */
-function banner(text,dur=1.6,local=false){ if(NET.role==='host' && !local) netBroadcast({type:'banner',text,dur}); const el=$('#banner'); el.textContent=text; el.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>el.classList.remove('show'),dur*1000); }
+function banner(text,dur=1.6,local=false){ if((NET.role==='host' || BC.viewers>0) && !local) netBroadcast({type:'banner',text,dur}); const el=$('#banner'); el.textContent=text; el.classList.add('show'); clearTimeout(banner.t); banner.t=setTimeout(()=>el.classList.remove('show'),dur*1000); }
 function ruleStep(dt){
   G.t+=dt;
   switch(G.phase){
@@ -1190,22 +1202,43 @@ function pauseOrNext(){ if(NET.role==='client') return banner('일시정지는 �
 /* ===================== 카메라 ===================== */
 let camMode='behind';
 const CAMS=['behind','top','broadcast','driver','follow','free'];
-const CAMNAME={behind:'우리 진영 뒤 롱뷰',top:'탑뷰',broadcast:'중계',driver:'조종석 (내 진영 사이드)',follow:'내 로봇 추적',free:'자유 (마우스)'};
+const CAMNAME={behind:'우리 골대 뒤 (전체 필드)',top:'탑뷰',broadcast:'중계',driver:'조종석 (내 진영 사이드)',follow:'내 로봇 추적',free:'자유 (마우스)'};
 function cycleCam(){ setCam(CAMS[(CAMS.indexOf(camMode)+1)%CAMS.length]); }
 function setCam(m){ camMode=m; controls.enabled=m==='free'; if(m==='free'){ controls.target.set(0,0,0); } $('#camstat').textContent='📷 '+CAMNAME[m]+'  (C / Y)'; camSnap=true; }
 let camSnap=true;
 const camPos=new THREE.Vector3(), camLook=new THREE.Vector3();
+// 필드 전체(골대 포함)가 화면에 들어오도록 거리 자동 계산
+const fitCamTmp=new THREE.PerspectiveCamera(45,1,0.005,200), vProj=new THREE.Vector3();
+function fieldPts(){ const pts=[]; if(F.type==='othello'){ for(const [x,z] of F.poly){ pts.push([x,0,z],[x,0.12,z]); } return pts; }
+  const L=F.L/2+(F.gd||0), W=F.W/2+0.02, h=Math.max(F.gh||0.1, RS.sideWall||0.05);
+  for(const x of [-L,L]) for(const z of [-W,W]) for(const y of [0,h]) pts.push([x,y,z]); return pts; }
+function fitView(dir, target, aspect, margin=0.92){
+  const c=fitCamTmp; c.fov=camera.fov; c.aspect=aspect; c.updateProjectionMatrix(); const pts=fieldPts();
+  let lo=0.05, hi=60;
+  for(let i=0;i<28;i++){ const mid=(lo+hi)/2; c.position.set(target.x+dir.x*mid,target.y+dir.y*mid,target.z+dir.z*mid); c.lookAt(target); c.updateMatrixWorld(true);
+    let ok=true; for(const p of pts){ vProj.set(p[0],p[1],p[2]).project(c); if(vProj.z>1||Math.abs(vProj.x)>margin||Math.abs(vProj.y)>margin){ ok=false; break; } }
+    if(ok) hi=mid; else lo=mid; }
+  return new THREE.Vector3(target.x+dir.x*hi,target.y+dir.y*hi,target.z+dir.z*hi);
+}
+function camPose(mode, aspect, out){ // out: {P,T}
+  const ad=attackDir(S.myTeam<0?0:S.myTeam);
+  if(mode==='behind'){ // 우리 골대 뒤에서 상대 골대 쪽으로, 필드 전체가 보이게
+    const el=THREE.MathUtils.degToRad(RS.type==='othello'?48:34); const T=new THREE.Vector3(ad*F.L*0.04,0,0);
+    const dir=new THREE.Vector3(-ad*Math.cos(el),Math.sin(el),0); out.P.copy(fitView(dir,T,aspect,0.86)); out.T.copy(T); return; }
+  if(mode==='broadcast'){ // 중계: 옆(관중석)에서 필드 전체
+    const el=THREE.MathUtils.degToRad(RS.type==='othello'?45:38); const T=new THREE.Vector3(0,0,0);
+    const dir=new THREE.Vector3(0,Math.sin(el),Math.cos(el)); out.P.copy(fitView(dir,T,aspect,0.94)); out.T.copy(T); return; }
+}
+const pipPose={P:new THREE.Vector3(),T:new THREE.Vector3()};
 function updateCamera(dt){
   if(camMode==='free'){ controls.update(); return; }
   const L=F.L, W=F.W, fovT=Math.tan(THREE.MathUtils.degToRad(camera.fov/2));
   const me=robots.find(r=>controller(r)==='me' && !r.out) || robots[0];
   let P=new THREE.Vector3(), T=new THREE.Vector3();
   camera.up.set(0,1,0);
-  if(camMode==='behind'){ // 우리 골라인 뒤쪽에서 상대 진영까지 길게 보는 시점
-    const ad=attackDir(S.myTeam); const back=Math.max(0.25,L*0.2), h=Math.max(0.22,L*0.3)+(RS.type==='othello'?0.15:0);
-    P.set(-ad*(L/2+back), h, 0); T.set(ad*L*0.12, 0, 0); }
+  if(camMode==='behind'){ const o={P,T}; camPose('behind',camera.aspect,o); }
   else if(camMode==='top'){ const h=Math.max(L/(2*fovT*camera.aspect), W/(2*fovT))*1.12; P.set(0,h,0.0001*h+h*0.12); T.set(0,0,0); }
-  else if(camMode==='broadcast'){ const d=Math.max(L/(2*fovT*camera.aspect),W/(2*fovT))*0.95; P.set(0,d*0.75,W/2+d*0.75); T.set(0,0,0.05*W); }
+  else if(camMode==='broadcast'){ const o={P,T}; camPose('broadcast',camera.aspect,o); }
   else if(camMode==='driver'){ // 조종자: 우리 진영 쪽 사이드라인에 서서 보는 시점
     const ad=attackDir(S.myTeam); const eye=RS.type==='othello'?1.45:(L<1?0.45:1.5);
     P.set(-ad*L*0.18, eye*(L<1?0.6:1), W/2+Math.max(0.35,W*0.5)); T.set(ad*L*0.08,0,0); }
@@ -1260,7 +1293,7 @@ function randCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(l
 function seatPeer(r){ for(const [pid,s] of NET.seats) if(s.team===r.team && s.idx===r.idx) return pid; return null; }
 function netSend(o){ try{ NET.host && NET.host.open && NET.host.send(o); }catch(e){} }
 function netSendTo(pid,o){ const c=NET.conns.get(pid); try{ c && c.open && c.send(o); }catch(e){} }
-function netBroadcast(o){ for(const c of NET.conns.values()) try{ c.open && c.send(o); }catch(e){} }
+function netBroadcast(o){ for(const c of NET.conns.values()) try{ c.open && c.send(o); }catch(e){} if(typeof BC!=='undefined' && BC.viewers>0) try{ BC.ch.postMessage(o); }catch(e){} }
 function myName(){ return ($('#netName').value.trim()||'플레이어').slice(0,12); }
 function netBadge(){ const el=$('#netBadge'); if(NET.role==='off'){ el.style.display='none'; return; } el.style.display='block';
   el.innerHTML = NET.role==='host' ? `🌐 방장 · 코드 <b>${NET.code}</b> · 접속 ${NET.conns.size}명` : `🌐 참가 중 · ${NET.code} · ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번`; }
@@ -1278,10 +1311,10 @@ function reseat(){ // 인원/종목이 바뀌면 자리 다시 맞추기
 function serializeModels(){ const list=[], idx=new Map(), slots=[];
   for(const t of [0,1]) for(let i=0;i<S.teamSize;i++){ const m=models[t][i]; if(!m) continue; if(!idx.has(m)){ idx.set(m,list.length); list.push({name:m.name,kind:m.kind,yaw:m.yaw,text:m.text,buf:m.buf,unit:m.unit,up:m.up}); } slots.push([t,i,idx.get(m)]); }
   return {list,slots}; }
-function configMsg(pid){ const seat=NET.seats.get(pid); return {type:'config', rs:RSKEY, teamSize:S.teamSize, seat:{team:seat.team,idx:seat.idx},
+function configMsg(pid){ const seat=(pid&&NET.seats.get(pid))||{team:-1,idx:-1}; return {type:'config', rs:RSKEY, teamSize:S.teamSize, seat:{team:seat.team,idx:seat.idx},
   set:{tie:S.tie,practice:S.practice,strict:S.strict,rule5:S.rule5,vmax:S.vmax,turn:S.turn,acc:S.acc}, models:serializeModels(), players:seatList(), ver:++NET.cfgVer}; }
 NET.cfgVer=0;
-function netScheduleConfig(){ clearTimeout(NET.cfgTimer); NET.cfgTimer=setTimeout(()=>{ reseat(); for(const pid of NET.conns.keys()) if(NET.seats.has(pid)) netSendTo(pid,configMsg(pid)); netPlayersUI(); },60); }
+function netScheduleConfig(){ clearTimeout(NET.cfgTimer); NET.cfgTimer=setTimeout(()=>{ if(BC.viewers>0) try{ BC.ch.postMessage(configMsg(null)); }catch(e){} if(NET.role!=='host') return; reseat(); for(const pid of NET.conns.keys()) if(NET.seats.has(pid)) netSendTo(pid,configMsg(pid)); netPlayersUI(); },60); }
 async function netHost(){
   if(IN_ARTIFACT) return netStatus('<span class="warn">이 화면(Claude 미리보기)에서는 외부 연결이 막혀 있습니다. GitHub Pages 등에 올린 주소에서 열어 주세요.</span>');
   netLeave(); netStatus('연결 서버에 접속 중…');
@@ -1332,12 +1365,14 @@ async function clientOnData(d){
     const built=[]; for(const m of d.models.list){ const tpl={name:m.name,kind:m.kind,yaw:m.yaw||0,text:m.text,buf:m.buf};
       const su=S.stlUnit, sp=S.stlUp; if(m.unit) S.stlUnit=m.unit; if(m.up) S.stlUp=m.up; try{ await buildTemplate(tpl); }catch(e){ tpl.error=e.message; } finally{ S.stlUnit=su; S.stlUp=sp; } built.push(tpl); }
     if(NET.pendingVer!==ver) return; // 더 새 설정이 옴
-    NET.role='client'; document.body.classList.add('client');
+    const spect = d.seat.team<0;
+    NET.role= spect?'spectator':'client'; document.body.classList.add(spect?'spectator':'client');
     if(RSKEY!==d.rs){ applyRS(d.rs); }
-    Object.assign(S,d.set); S.teamSize=d.teamSize; S.myTeam=d.seat.team; S.myRobot=d.seat.idx;
+    Object.assign(S,d.set); S.teamSize=d.teamSize; S.myTeam=spect?0:d.seat.team; S.myRobot=spect?-1:d.seat.idx;
     models[0].length=0; models[1].length=0; for(const [t,i,k] of d.models.slots) models[t][i]=built[k];
-    $('#rsSel').value=d.rs; $('#teamSize').value=d.teamSize; $('#myTeam').value=S.myTeam; fillMyRobot(); $('#myRobot').value=S.myRobot;
+    $('#rsSel').value=d.rs; $('#teamSize').value=d.teamSize; if(!spect){ $('#myTeam').value=S.myTeam; fillMyRobot(); $('#myRobot').value=S.myRobot; }
     setupMatch(); NET.list=d.players; camSnap=true;
+    if(spect){ if(camMode!=='broadcast' && !NET.camChosen) setCam('broadcast'); NET.camChosen=true; return; }
     netStatus(`<span class="ok">참가 중</span> — 방 ${NET.code} · 내 자리: <b>${TEAMNAME[S.myTeam]} ${S.myRobot+1}번</b><br>종목·설정은 방장이 정합니다. 로봇 모델 탭에서 파일을 고르면 내 로봇 모델을 방장에게 보냅니다.`);
     netPlayersUI(); banner('참가 완료 — '+TEAMNAME[S.myTeam]+' '+(S.myRobot+1)+'번',1.5,true);
   }
@@ -1388,16 +1423,56 @@ $('#netName').addEventListener('change',e=>{ try{ localStorage.setItem('sim.name
 $('#netWhere').innerHTML = IN_ARTIFACT ? '<span class="warn">지금 화면(Claude 미리보기)은 외부 연결이 막혀 있어 온라인 대전이 되지 않습니다. 이 파일을 GitHub Pages 등에 올린 주소에서 열어 주세요.</span>'
   : '같은 주소를 연 기기끼리 방 코드로 연결됩니다(WebRTC 직접 연결 · 처음 연결만 PeerJS 공개 서버 사용). 학교·기관 방화벽에 따라 연결이 안 될 수 있습니다.';
 
+/* ===================== 화면 그리기 (본 화면 + 작은 중계 화면) ===================== */
+const pipCam=new THREE.PerspectiveCamera(42,16/9,0.005,200);
+const PIP={on:true,size:0.32};
+function renderMain(){
+  const w=view.clientWidth, h=view.clientHeight;
+  renderer.setScissorTest(false); renderer.setViewport(0,0,w,h); renderer.render(scene,camera);
+  const fr=$('#pipFrame'); const show=PIP.on && NET.role!=='spectator' && w>420;
+  fr.style.display=show?'block':'none'; if(!show) return;
+  const pw=Math.round(w*PIP.size), ph=Math.round(pw*9/16), x=w-pw-12, yTop=Math.max(52, NET.role!=='off'?86:52);
+  fr.style.left=x+'px'; fr.style.top=yTop+'px'; fr.style.width=pw+'px'; fr.style.height=ph+'px';
+  const mode = camMode==='broadcast' ? 'behind' : 'broadcast';
+  fr.firstElementChild.textContent = mode==='broadcast' ? '📺 중계 (옆)' : '🥅 우리 골대 뒤';
+  pipCam.aspect=pw/ph; pipCam.fov=camera.fov; pipCam.updateProjectionMatrix(); camPose(mode,pipCam.aspect,pipPose);
+  pipCam.position.copy(pipPose.P); pipCam.up.set(0,1,0); pipCam.lookAt(pipPose.T);
+  const yb=h-yTop-ph; renderer.setScissorTest(true); renderer.setScissor(x,yb,pw,ph); renderer.setViewport(x,yb,pw,ph);
+  renderer.setClearColor(scene.background); renderer.clear(); renderer.render(scene,pipCam);
+  renderer.setScissorTest(false); renderer.setViewport(0,0,w,h);
+}
+$('#pipFrame').addEventListener('click',()=>{ setCam(camMode==='broadcast'?'behind':'broadcast'); view.focus(); });
+function setPip(on){ PIP.on=on; $('#pipOn').checked=on; try{ localStorage.setItem('sim.pip',on?'1':'0'); }catch(e){} }
+$('#pipOn').addEventListener('change',e=>setPip(e.target.checked));
+$('#pipSize').addEventListener('change',e=>{ PIP.size=+e.target.value; });
+try{ const v=localStorage.getItem('sim.pip'); if(v) setPip(v==='1'); }catch(e){}
+
+/* ===================== 중계 전용 창 (같은 PC, BroadcastChannel) ===================== */
+const BC={ch:null, viewers:0, ids:new Set()};
+const IS_SPECTATOR = location.hash==='#broadcast';
+try{ BC.ch=new BroadcastChannel('irea-wrlsim'); }catch(e){}
+if(BC.ch){
+  BC.ch.onmessage=e=>{ const d=e.data; if(!d||!d.type) return;
+    if(IS_SPECTATOR){ if(d.type!=='spectate'&&d.type!=='bye') clientOnData(d); return; }
+    if(d.type==='spectate'){ BC.ids.add(d.id); BC.viewers=BC.ids.size; BC.ch.postMessage(configMsg(null)); }
+    if(d.type==='bye'){ BC.ids.delete(d.id); BC.viewers=BC.ids.size; } };
+}
+$('#btnBroadcastWin').addEventListener('click',()=>{
+  if(IN_ARTIFACT || !BC.ch){ $('#bcNote').innerHTML='<span class="warn">이 화면(Claude 미리보기)에서는 새 창을 열 수 없습니다. GitHub Pages 주소나 HTML 파일로 열어 주세요.</span>'; return; }
+  const u=location.href.split('#')[0]+'#broadcast'; const w=window.open(u,'wrlsim_broadcast','width=1280,height=720');
+  if(!w) $('#bcNote').innerHTML='<span class="warn">팝업이 차단되었습니다. 주소창 오른쪽에서 팝업을 허용해 주세요.</span>'; });
+if(IN_ARTIFACT) $('#btnBroadcastWin').style.display='none';
+
 /* ===================== 메인 루프 ===================== */
 let last=performance.now(), acc=0;
 function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min(0.05,(now-last)/1000); last=now;
   pollInput();
-  if(NET.role==='client'){ netClientFrame(dt); syncVisuals(dt); updateCamera(dt); renderer.render(scene,camera); updateHUD(); return; }
+  if(NET.role==='client'||NET.role==='spectator'){ netClientFrame(dt); syncVisuals(dt); updateCamera(dt); renderMain(); updateHUD(); return; }
   if(!G.paused && G.phase!=='idle'){ acc+=dt; let n=0; while(acc>=DT && n<24){ ruleStep(DT); if(G.phase!=='end'||true) physicsStep(DT); acc-=DT; n++; } if(n>=24) acc=0; }
-  syncVisuals(G.paused?0:dt); updateCamera(dt); renderer.render(scene,camera); updateHUD();
-  if(NET.role==='host'){ NET.snapT+=dt; if(NET.snapT>=1/30){ NET.snapT=0; netBroadcast(snapshot()); } }
+  syncVisuals(G.paused?0:dt); updateCamera(dt); renderMain(); updateHUD();
+  if(NET.role==='host' || BC.viewers>0){ NET.snapT+=dt; if(NET.snapT>=1/30){ NET.snapT=0; netBroadcast(snapshot()); } }
 }
 
 /* ===================== UI ===================== */
@@ -1522,6 +1597,9 @@ try{ if(localStorage.getItem('sim.padOn')==='1'){ S.padOn=true; for(const id of 
 window.__sim={advance(sec){ for(let i=0;i<sec/DT;i++){ pollInput(); ruleStep(DT); physicsStep(DT);} syncVisuals(0.016); },G,S,get robots(){return robots;},get ball(){return ball;},get blocks(){return blocks;},applyRS,setupMatch,importModel,setCam,models};
 
 loadBuiltinLib(); libStatus();
+if(IS_SPECTATOR){ document.body.classList.add('spectator'); $('#overlay').style.display='none'; document.title='📺 중계 — 대회연습용 조종 시뮬레이터';
+  const id=Math.random().toString(36).slice(2); const hi=()=>BC.ch&&BC.ch.postMessage({type:'spectate',id}); hi(); setTimeout(()=>{ if(NET.role!=='spectator') hi(); },800);
+  window.addEventListener('beforeunload',()=>{ try{ BC.ch.postMessage({type:'bye',id}); }catch(e){} }); }
 fillRS(); applyRS('mrc_open'); G.phase='idle'; setCam('behind'); resize();
 requestAnimationFrame(frame);
 </script>
