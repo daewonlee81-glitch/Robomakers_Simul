@@ -617,7 +617,7 @@ function newWorld(){
   world=new CANNON.World({gravity:new CANNON.Vec3(0,-9.81,0)});
   world.broadphase=new CANNON.SAPBroadphase(world); world.allowSleep=false;
   world.solver.iterations=12; world.solver.tolerance=1e-4;
-  for(const k of ['ground','wall','ball','robot','block','disc','board','cone']) MAT[k]=new CANNON.Material(k);
+  for(const k of ['ground','wall','ball','robot','block','disc','board','cone','blade']) MAT[k]=new CANNON.Material(k);
   const cm=(a,b,friction,restitution)=>world.addContactMaterial(new CANNON.ContactMaterial(MAT[a],MAT[b],{friction,restitution,contactEquationStiffness:1e7,contactEquationRelaxation:3}));
   world.defaultContactMaterial.friction=0.3;
   cm('ball','ground',0.35,0.3); cm('ball','wall',0.1,0.55); cm('ball','robot',0.25,0.3);
@@ -625,8 +625,10 @@ function newWorld(){
   // 오셀로 판은 가벼워서(25~30 g) 잘 밀림. cannon은 접촉점마다 마찰을 따로 걸기 때문에(원판 바닥 16점 · 사각판 4점) 점 개수로 나눠 실제 마찰 0.3이 되게 함
   // cannon의 원판(볼록다면체) 바닥 마찰은 실제보다 훨씬 강하게 걸려 판이 붙어버림 → 원판-바닥 마찰은 0으로 두고 plateFriction()에서 쿨롱 마찰(μ=MU_PLATE)을 직접 적용
   cm('disc','ground',0,0.05); cm('board','ground',MU_PLATE/4,0.05);
+  cm('blade','ground',0,0); cm('blade','disc',0.05,0); cm('blade','board',0.05,0); cm('blade','cone',0.1,0.05); cm('blade','robot',0.2,0.05); cm('blade','wall',0.05,0.05);
+  cm('cone','ground',0,0.1);   // 콘도 바닥 마찰은 plateFriction()에서 직접
   for(const a of ['disc','board']){ cm(a,'robot',0.3,0.05); cm(a,'cone',0.3,0.1); for(const c of ['disc','board']) if(a<=c) cm(a,c,0.2,0.05); }
-  cm('cone','ground',0.45,0.1); cm('cone','robot',0.3,0.2); cm('cone','block',0.3,0.1);
+  cm('cone','robot',0.3,0.2); cm('cone','block',0.3,0.1);
 }
 function staticBox(cx,cy,cz,hx,hy,hz,yaw=0,mat='wall'){
   const b=new CANNON.Body({mass:0,material:MAT[mat]}); b.addShape(new CANNON.Box(new CANNON.Vec3(hx,hy,hz)));
@@ -790,9 +792,9 @@ async function loadSTL(buf){
 function normalizeModel(raw, yaw){
   const holder=new THREE.Group(); holder.add(raw.clone()); holder.rotation.y=yaw*Math.PI/2;
   const wrap=new THREE.Group(); wrap.add(holder); wrap.updateMatrixWorld(true);
-  const box=new THREE.Box3().setFromObject(holder); const size=box.getSize(new THREE.Vector3());
+  const box=new THREE.Box3().setFromObject(holder,true); const size=box.getSize(new THREE.Vector3());
   const bn=holder.getObjectByName('bodyMeshes'); const hasFlip=!!holder.getObjectByName('flipPivot');
-  const bbox = (bn&&hasFlip) ? new THREE.Box3().setFromObject(bn) : box; const bsz=bbox.getSize(new THREE.Vector3());
+  const bbox = (bn&&hasFlip) ? new THREE.Box3().setFromObject(bn,true) : box; const bsz=bbox.getSize(new THREE.Vector3());
   holder.position.set(-(bbox.min.x+bbox.max.x)/2, -box.min.y, -(bbox.min.z+bbox.max.z)/2);
   return {object:wrap, L:size.x, W:size.z, H:size.y, bL:bsz.x, bW:bsz.z, bH:bsz.y, reach:Math.max(0,box.max.x-bbox.max.x), hasFlip};
 }
@@ -845,9 +847,17 @@ function makeRobot(team, idx){
   if(vis.flip){ r.flipNode=vis.object.getObjectByName('flipPivot'); r.flipBase=vis.flip.theta0; r.flipReach=Math.max(0.03,vis.reach); }
   else if(RS.type==='othello'){ // 플립 팔 (C 모터) — 모델에 플리퍼가 없을 때만
     r.flipReach=0.07;
-    r.armPivot=new THREE.Group(); r.armPivot.position.set(r.hl,-r.H/2+0.012,0);
-    const arm=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.006,r.hw*1.5),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.5,roughness:0.35})); arm.position.x=0.035; arm.castShadow=true;
+    r.armPivot=new THREE.Group(); r.armPivot.position.set(r.hl,-r.H/2+0.003,0);
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.004,r.hw*1.5),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.5,roughness:0.35})); arm.position.x=0.035; arm.castShadow=true;
     r.armPivot.add(arm); r.mesh.add(r.armPivot); r.armT=0; }
+  if(RS.type==='othello'){ // 플리퍼 날 (충돌체): 바닥에 붙은 얇은 쐐기 → 판 아래로 파고들어 판이 플리퍼 위로 올라탐. 플리퍼가 들리면 충돌 끔
+    const w=Math.min(r.hw*0.75,0.07); let slope=0.012/r.flipReach;
+    if(r.flipNode){ // 모델 플리퍼의 실제 기울기 (앞 끝 바닥 → 뒤쪽 위)
+      vis.object.updateMatrixWorld(true); const inv=vis.object.matrixWorld.clone().invert(); const B=new THREE.Box3().setFromObject(r.flipNode,true); B.applyMatrix4(inv);
+      const run=Math.max(0.02,(r.hl+r.flipReach)-B.min.x), rise=B.max.y-B.min.y; slope=clamp(rise/run,0.05,1.2); }
+    const x0=r.hl-0.004, xT=r.hl+r.flipReach; r.blade=bladeShape(x0, xT, -r.H/2-0.0008, slope*(xT-x0), w); r.blade.material=MAT.blade; r.bladeW=w; r.bladeX0=x0; r.bladeXT=xT; r.bladeSlope=slope;
+    r.blade.collisionFilterGroup=2; r.blade.collisionFilterMask=~4;   // 판과는 충돌 안 함 (판이 날 위로 올라타는 건 bladeRide()에서)
+    r.body.addShape(r.blade); r.body.updateMassProperties(); }
   if(RS.kick){ const kp=new THREE.Mesh(new THREE.BoxGeometry(Math.max(0.004,r.hl*0.06),r.H*0.35,r.hw*1.2),new THREE.MeshStandardMaterial({color:'#9aa4ae',metalness:0.6,roughness:0.3}));
     kp.position.set(r.hl+kp.geometry.parameters.width/2,-r.H/2+r.H*0.25,0); kp.castShadow=true; r.kicker=kp; r.mesh.add(kp); }
   const ringR=Math.hypot(r.hl,r.hw)*1.05;
@@ -891,7 +901,7 @@ function setupOthelloObjects(){
     b.bot=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:'#fff',roughness:0.7})); b.bot.position.y=-0.005;
     b.mesh.add(b.top,b.bot); b.top.castShadow=b.bot.castShadow=true; paintBlock(b); dynGroup.add(b.mesh);
     b.body=new CANNON.Body({mass:b.m,material:square?MAT.board:MAT.disc,linearDamping:0.05,angularDamping:0.2});
-    b.body.addShape(square? new CANNON.Box(new CANNON.Vec3(0.06,0.01,0.06)) : new CANNON.Cylinder(0.06,0.06,0.02,16));
+    b.body.addShape(square? new CANNON.Box(new CANNON.Vec3(0.06,0.01,0.06)) : new CANNON.Cylinder(0.06,0.06,0.02,16)); b.body.shapes[0].collisionFilterGroup=4;
     b.body.userData={kind:'block',ent:b}; touchTrack(b); teleport(b.body,x,0.0102,z,0); world.addBody(b.body); blocks.push(b); };
   const negTeam = attackDir(0)>0 ? 0 : 1;   // -x 쪽 진영 팀
   if(RS.variant==='v2'){ for(const z of V2.discZ){ mk(-V2.discX,z,negTeam,false); mk(V2.discX,z,1-negTeam,false); } }
@@ -904,7 +914,7 @@ function setupOthelloObjects(){
     b.bot=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[negTeam],roughness:0.7})); b.bot.position.x=-0.005;  // -x 진영 색
     b.mesh.add(b.top,b.bot); b.top.castShadow=b.bot.castShadow=true; dynGroup.add(b.mesh);
     b.body=new CANNON.Body({mass:b.m,material:MAT.board,linearDamping:0.05,angularDamping:0.2});
-    b.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01,0.06,0.06)));
+    b.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01,0.06,0.06))); b.body.shapes[0].collisionFilterGroup=4;
     b.body.userData={kind:'block',ent:b}; touchTrack(b); teleport(b.body,0,0.0602,0,0); world.addBody(b.body); blocks.push(b); }
 }
 // 판에 마지막으로 닿은 로봇의 팀 기록 (직접 밀거나, 판끼리 밀려 닿은 경우도 전달)
@@ -940,11 +950,11 @@ function placeOthello(){
         const cp = list.length>1 ? (i? V2.cones.top : V2.cones.bot) : V2.cones.mid; cx=-ad*cp[0]; cz=cp[1]; }
       Object.assign(r,{x,z,th:ad>0?0:Math.PI,vx:0,vz:0,w:0,out:false,fallT:0,coneDone:!S.strict,idleT:0,sdT:0,spinT:0});
       r.body.angularFactor.set(0,1,0); teleport(r.body,x,r.H/2+0.001,z,r.th);
-      if(S.strict){ const c={x:cx,z:cz,vx:0,vz:0,r:CR,m:0.015,team:t,robot:r,tip:0,tipped:false,out:false,fallT:0,
+      if(S.strict){ const c={x:cx,z:cz,vx:0,vz:0,r:CR,m:0.005,team:t,robot:r,tip:0,tipped:false,out:false,fallT:0,
           mesh:new THREE.Group()};
         const cm=new THREE.Mesh(new THREE.ConeGeometry(CR,0.08,24),new THREE.MeshStandardMaterial({color:'#ffd400',roughness:0.6})); cm.castShadow=true; c.mesh.add(cm);
         const ring=new THREE.Mesh(new THREE.RingGeometry(0.05,0.056,32),new THREE.MeshBasicMaterial({color:'#333',side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(cx,0.001,cz); dynGroup.add(ring); c.ring=ring; if(RS.variant==='v2') ring.visible=false;
-        c.body=new CANNON.Body({mass:0.02,material:MAT.cone,linearDamping:0.2,angularDamping:0.2}); c.body.addShape(new CANNON.Cylinder(0.006,CR,0.08,16));
+        c.body=new CANNON.Body({mass:0.005,material:MAT.cone,linearDamping:0.2,angularDamping:0.2}); c.body.addShape(new CANNON.Cylinder(0.006,CR,0.08,16));
         c.body.userData={kind:'cone',ent:c}; teleport(c.body,cx,0.0402,cz); world.addBody(c.body);
         dynGroup.add(c.mesh); cones.push(c); }
     }); }
@@ -1209,7 +1219,9 @@ function plateDanger(r,dir){ const {f}=obbAxes(r);
 function aiOthello(r, skill, dt){
   aiOthelloCore(r,skill,dt);
   if(r.unstick>0) { if(plateDanger(r,-1)){ r.cmd.f=0; r.unstick=0; } return; }
-  const dir = r.cmd.f>0.05 ? 1 : (r.cmd.f<-0.05 ? -1 : 0);
+  // 플리퍼에 얹힌 판이 가장자리 가까이면 뒤로 빠져서 판을 내려놓음
+  for(const b of blocks) if(b.onBlade===r && inPoly(b.x,b.z,F.poly)<0.12){ r.unstick=0.4; r.unstickDir=0; r.cmd.f=-0.6; r.cmd.t=0; return; }
+  const dir = r.cmd.f>0.005 ? 1 : (r.cmd.f<-0.005 ? -1 : 0);
   if(dir && plateDanger(r,dir)){ r.cmd.f=0; r.guardT=(r.guardT||0)+dt;
     const c=Math.cos(r.th), s=Math.sin(r.th); const lyC=(-r.x)*(-s)+(-r.z)*(-c); r.cmd.t = lyC>=0 ? -0.8 : 0.8;   // 판을 밀지 않고 제자리에서 경기장 안쪽으로 돌기
     if(r.guardT>1.5 && r.tgt){ r.ban=r.tgt; r.banT=3; r.guardT=0; } }
@@ -1299,7 +1311,7 @@ function driveRobot(r,dt){
       for(const w of F.walls){ const ex=w.bx-w.ax, ez=w.bz-w.az, L2=ex*ex+ez*ez; let t=((b.position.x-w.ax)*ex+(b.position.z-w.az)*ez)/L2; t=clamp(t,0,1);
         const qx=w.ax+ex*t, qz=w.az+ez*t; let dx=b.position.x-qx, dz=b.position.z-qz; const d=Math.hypot(dx,dz), need=r.spinR+Math.max(w.wt,0.01)+0.001;
         if(d<need && d>1e-6){ b.position.x+=dx/d*(need-d); b.position.z+=dz/d*(need-d); } } }
-    b.removeShape(b.shapes[0]); b.addShape(want==='cyl'?r.shapeCyl:r.shapeBox); b.updateMassProperties(); r.shapeNow=want; }
+    b.removeShape(want==='cyl'?r.shapeBox:r.shapeCyl); b.addShape(want==='cyl'?r.shapeCyl:r.shapeBox); b.updateMassProperties(); r.shapeNow=want; }
   if(r.spinHold>0){ const sp=Math.hypot(b.velocity.x,b.velocity.z), cap=Math.max(Math.abs(tf)*p.vmax,0.12); if(sp>cap){ b.velocity.x*=cap/sp; b.velocity.z*=cap/sp; } }
   const latMax = p.omni ? p.acc : (spinning ? 8 : 60);   // 차동: 옆미끄럼 저항 (제자리 회전 중엔 완화)
   const al=clamp((ts*p.vmax-v)/dt,-latMax,latMax);
@@ -1314,7 +1326,43 @@ function plateFriction(dt){ // 바닥에 닿은 원판: 수평 속도·회전을
   for(const b of blocks){ if(b.out || b.board) continue; const B=b.body; if(B.position.y>0.016 || B.position.y<-0.01) continue;
     const up=Math.abs(B.quaternion.vmult(new CANNON.Vec3(0,1,0)).y); if(up<0.95) continue;
     const v=B.velocity, sp=Math.hypot(v.x,v.z); if(sp>0){ const k=Math.max(0,sp-dv)/sp; v.x*=k; v.z*=k; }
-    const w=B.angularVelocity; w.y=approach(w.y,0,dv/0.04); } }
+    const w=B.angularVelocity; w.y=approach(w.y,0,dv/0.04); }
+  for(const c of cones){ if(c.out) continue; const B=c.body; if(B.position.y>0.045 || B.position.y<0.03) continue;
+    if(B.quaternion.vmult(new CANNON.Vec3(0,1,0)).y<0.97) continue;
+    const v=B.velocity, sp=Math.hypot(v.x,v.z); if(sp>0){ const k=Math.max(0,sp-0.45*9.81*dt)/sp; v.x*=k; v.z*=k; } } }
+// 플리퍼가 내려가 있을 때 앞으로 밀고 들어가면 판이 플리퍼 날 위로 올라탐 (뒤쪽 가장자리가 날 위, 앞쪽은 바닥)
+const RIDE_MAX=0.03;   // 판 뒤쪽이 올라가는 최대 높이
+function bladeRide(){
+  for(const b of blocks){ const was=b.onBlade; b.onBlade=null; const B=b.body;
+    if(was && !b.flipping){ B.velocity.y=Math.min(B.velocity.y,0.1); B.angularVelocity.x*=0.3; B.angularVelocity.z*=0.3; }   // 날에서 내려올 때 튕기지 않게
+    if(b.out || b.flipping>0) continue;
+    const upv=B.quaternion.vmult(b.board?new CANNON.Vec3(1,0,0):new CANNON.Vec3(0,1,0)); if(b.board && Math.abs(upv.y)<0.8) continue;   // 세워진 가운데 판은 제외
+    if(B.position.y>0.06 || inPoly(B.position.x,B.position.z,F.poly)<0) continue;   // 경기장 밖으로 나간 판은 받치지 않음 → 떨어짐
+    const R=b.board?0.06:0.06, T=0.02;
+    for(const r of robots){ if(r.out || !r.blade || !r.blade.collisionResponse) continue;
+      const [lx,ly]=toLocal(r,B.position.x,B.position.z); if(Math.abs(ly)>r.bladeW+R*0.5 || lx<r.hl) continue;
+      let xr=lx-R; if(xr>=r.bladeXT) continue;
+      const xCap=Math.max(r.bladeX0, r.bladeXT-RIDE_MAX/r.bladeSlope); const {f}=obbAxes(r);
+      const deep = xr<=xCap+0.002;
+      if(xr<xCap){ const push=xCap-xr; B.position.x+=f[0]*push; B.position.z+=f[1]*push; xr=xCap; }
+      // 날이 판 밑으로 파고드는 동안 판은 제자리(바닥 마찰), 끝까지 올라타면 로봇과 함께 밀려감. 로봇이 뒤로 빠지면 판은 남음
+      if(deep){ const ru=Math.max(0, r.body.velocity.x*f[0]+r.body.velocity.z*f[1]); const lv=[-f[1],f[0]]; const rl=r.body.velocity.x*lv[0]+r.body.velocity.z*lv[1];
+        B.velocity.x=f[0]*ru+lv[0]*rl; B.velocity.z=f[1]*ru+lv[1]*rl; }
+      else { B.velocity.x*=0.5; B.velocity.z*=0.5; }
+      const h=Math.min(RIDE_MAX, r.bladeSlope*(r.bladeXT-Math.max(xr,r.bladeX0))); const al=Math.asin(clamp(h/(2*R),0,0.9));
+      const s=Math.sign(upv.y)||1; const yaw=r.th;
+      const qy=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0), b.board?yaw:Math.atan2(-f[1],f[0]));
+      const flipQ = s>0 ? new CANNON.Quaternion() : new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1,0,0),Math.PI);
+      const boardQ = b.board ? new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,0,1),Math.PI/2) : new CANNON.Quaternion();
+      const tilt=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(f[1],0,-f[0]), al);
+      B.quaternion.copy(tilt.mult(qy.mult(boardQ.mult(flipQ)))); B.quaternion.normalize();
+      B.position.y=h/2+(T/2)*Math.cos(al)+0.0012; B.velocity.y=0; B.angularVelocity.set(0,0,0);
+      b.onBlade=r; syncEnt(b); break; } } }
+function bladeShape(x0,xT,g,h,w){ // 삼각 쐐기: 뒤쪽 높이 h, 앞 끝 높이 0
+  const V=[[x0,g,-w],[xT,g,-w],[x0,g+h,-w],[x0,g,w],[xT,g,w],[x0,g+h,w]].map(a=>new CANNON.Vec3(...a));
+  const c=new CANNON.Vec3((2*x0+xT)/3,g+h/3,0);
+  const faces=[[0,1,2],[3,4,5],[0,1,4,3],[0,3,5,2],[1,2,5,4]].map(f=>{ const a=V[f[0]],b=V[f[1]],d=V[f[2]]; const n=b.vsub(a).cross(d.vsub(a)); return n.dot(a.vsub(c))<0 ? f.slice().reverse() : f; });
+  return new CANNON.ConvexPolyhedron({vertices:V,faces}); }
 function obbAxes(r){ const c=Math.cos(r.th), s=Math.sin(r.th); return {f:[c,-s], l:[-s,-c]}; }
 function toLocal(r,x,z){ const {f,l}=obbAxes(r); const dx=x-r.x, dz=z-r.z; return [dx*f[0]+dz*f[1], dx*l[0]+dz*l[1]]; }
 function syncEnt(e){ const b=e.body; e.x=b.position.x; e.z=b.position.z; e.y=b.position.y; e.vx=b.velocity.x; e.vz=b.velocity.z; }
@@ -1354,8 +1402,9 @@ function physicsStep(dt){
     else { const v=ball.body.velocity, sp=Math.hypot(v.x,v.z), vm=RS.ball.vmax*1.3; if(sp>vm){ v.x*=vm/sp; v.z*=vm/sp; }
       // 구름 저항
       if(ball.body.position.y<ball.r*1.05 && sp>0){ const dec=RS.ball.c*dt; const k=Math.max(0,sp-dec)/sp; v.x*=k; v.z*=k; } } }
-  if(blocks.length) plateFriction(dt);
+  if(blocks.length||cones.length) plateFriction(dt);
   world.step(dt);
+  if(blocks.length) bladeRide();
   // 벽·로봇에 막혀 회전이 안 되면 모자란 회전만큼 직접 돌림 → 다음 스텝에서 충돌이 로봇을 밀어냄 (벽에 붙어도 제자리 회전 가능)
   for(const r of robots){ if(r.out || !r.wCmd) continue; const b=r.body; const def=r.wCmd-b.angularVelocity.y;
     if(Math.abs(r.wCmd)>0.2 && Math.abs(def)>0.25*Math.abs(r.wCmd)){ const dq=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0),def*dt*0.9); b.quaternion.copy(dq.mult(b.quaternion)); b.quaternion.normalize(); r.assist=(r.assist||0)+1; } }
@@ -1438,11 +1487,12 @@ function othelloChecks(dt){
     else if(r.flipState===1){ if(!(r.flipHold==='A'?c.flipA:(r.flipHold==='B'?c.flipB:c.flipY))){ r.flipTgt=0; r.flipState=2; } }
     else if(r.flipState===2){ if(r.armAng<=1){ r.armAng=0; r.flipState=0; } }
     r.armAng=approach(r.armAng||0, r.flipTgt, (r.flipSpd||FLIP_SPEED)*dt);
+    if(r.blade) r.blade.collisionResponse = r.armAng<4;
     // 올라가는 도중 플리퍼 위의 블록에 힘 전달 (각도가 클수록 세게)
     if(r.flipState===1 && !r.flipFired && r.armAng>=Math.min(r.flipTgt*0.6,40)){ r.flipFired=true;
       const {f,l}=obbAxes(r); let best=null, bd=1e9; const reach=r.flipReach||0.07;
       for(const b of blocks){ if(b.out||b.flipping>0) continue; const [lx,ly]=toLocal(r,b.x,b.z);
-        if(lx>r.hl-0.02 && lx<r.hl+reach+b.r*0.6 && Math.abs(ly)<r.hw+0.02 && b.y<(b.board?0.08:0.05) && lx<bd){ bd=lx; best=b; } }
+        if(lx>r.hl-0.02 && lx<r.hl+reach+b.r*0.6 && Math.abs(ly)<r.hw+0.02 && b.y<(b.board?0.08:0.06) && lx<bd){ bd=lx; best=b; } }
       const sgt=r.flipTgt/90;
       if(best){ { if(S.strict && !r.coneDone && G.phase==='play'){ startViolation(r); return; }
         if(S.strict && !r.coneDone && G.phase==='play'){ startViolation(r); return; }
@@ -1475,7 +1525,7 @@ function othelloChecks(dt){
     if(up<0.97 || b.y>0.0145 || b.flipping>0) continue;
     let onFlip=false; for(const r of robots){ if(r.out) continue; const [lx,ly]=toLocal(r,b.x,b.z);
       if(lx>r.hl-0.005 && lx<r.hl+(r.flipReach||0.07) && Math.abs(ly)<r.hw){ onFlip=true; break; } }
-    b.valid=!onFlip; }
+    b.valid=!onFlip && !b.onBlade; }
   const sc=[0,0]; for(const b of blocks) if(b.valid) sc[b.owner]++;
   G.score=sc;
   if(G.phase==='play'){
@@ -1955,7 +2005,7 @@ $('#padSel').addEventListener('change',e=>{ padPick=+e.target.value; padPrev=[];
 $('#padTest').addEventListener('click',()=>{ if(!getPad()) return banner(S.padOn?'컨트롤러가 아직 없습니다':'먼저 컨트롤러 연결을 켜세요',1.2); rumble(0.8,1,400); });
 try{ if(localStorage.getItem('sim.padOn')==='1'){ S.padOn=true; for(const id of ['#padOn','#padOn0','#padOn2']) $(id).checked=true; } }catch(e){}
 // 디버그/테스트용 훅
-window.__sim={contacts:()=>world.contacts,teleportRobot(r,x,z,th){ teleport(r.body,x,r.H/2+0.001,z,th); r.th=th; },advance(sec){ for(let i=0;i<sec/DT;i++){ pollInput(); ruleStep(DT); physicsStep(DT);} syncVisuals(0.016); },G,S,get robots(){return robots;},get ball(){return ball;},get blocks(){return blocks;},applyRS,setupMatch,importModel,setCam,models,camera,controls,get F(){return F;}};
+window.__sim={THREE,contacts:()=>world.contacts,teleportRobot(r,x,z,th){ teleport(r.body,x,r.H/2+0.001,z,th); r.th=th; },advance(sec){ for(let i=0;i<sec/DT;i++){ pollInput(); ruleStep(DT); physicsStep(DT);} syncVisuals(0.016); },G,S,get robots(){return robots;},get ball(){return ball;},get blocks(){return blocks;},applyRS,setupMatch,importModel,setCam,models,camera,controls,get F(){return F;}};
 
 loadBuiltinLib(); libStatus();
 if(window.DEFAULT_ROBOTS && window.DEFAULT_ROBOTS.othello){ const dr=window.DEFAULT_ROBOTS.othello; const tpl={name:dr.name,kind:'ldraw',yaw:0,text:dr.text};
