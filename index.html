@@ -1207,13 +1207,8 @@ function robotParams(r){
 }
 const MU=1.1; // 바퀴 견인 한계 (마찰계수)
 const tmpV=new CANNON.Vec3();
-function driveRobot(r,dt){
-  const b=r.body;
-  r.wCmd=0;
-  if(r.cmd.estop){ b.velocity.x=0; b.velocity.z=0; b.angularVelocity.set(0,0,0); return; }   // 비상정지: 즉시 정지
-  if(r.out || b.position.y > r.H/2+0.03 || b.position.y < r.H/2-0.03) return; // 공중/낙하 중엔 구동력 없음
-  const p=robotParams(r); const th=r.th; const fx=Math.cos(th),fz=-Math.sin(th),lx=-Math.sin(th),lz=-Math.cos(th);
-  const vx=b.velocity.x, vz=b.velocity.z; const u=vx*fx+vz*fz, v=vx*lx+vz*lz;
+// 조종 명령 → 목표 전진속도 비율(tf)·옆이동(ts)·각속도(wt)·가속 한계. 바퀴 모드는 모터 지연(wl/wr)을 갱신
+function driveTargets(r,p,dt){
   let tf=clamp(r.cmd.f,-1,1), ts=p.omni?clamp(r.cmd.s,-1,1):0; const m=Math.hypot(tf,ts); if(m>1){tf/=m;ts/=m;}
   let wt=clamp(r.cmd.t,-1,1)*p.turn, accU=p.acc;
   if(r.armT>0 && r.cmd.wheel) r.cmd.wheel={l:0,r:0,bl:true,br:true};   // 오셀로: 팔 동작 중 바퀴 브레이크
@@ -1222,6 +1217,16 @@ function driveRobot(r,dt){
     r.wl+=(W.l-r.wl)*(1-Math.exp(-dt/(W.bl?TAUB:TAU))); r.wr+=(W.r-r.wr)*(1-Math.exp(-dt/(W.br?TAUB:TAU)));
     tf=(r.wl+r.wr)/2; ts=0; wt=(r.wr-r.wl)/2*p.vmax/Math.max(r.hw,0.01)*0.75; accU=40;
   } else { r.wl=0; r.wr=0; }
+  return {tf,ts,wt,accU};
+}
+function driveRobot(r,dt){
+  const b=r.body;
+  r.wCmd=0;
+  if(r.cmd.estop){ b.velocity.x=0; b.velocity.z=0; b.angularVelocity.set(0,0,0); return; }   // 비상정지: 즉시 정지
+  if(r.out || b.position.y > r.H/2+0.03 || b.position.y < r.H/2-0.03) return; // 공중/낙하 중엔 구동력 없음
+  const p=robotParams(r); const th=r.th; const fx=Math.cos(th),fz=-Math.sin(th),lx=-Math.sin(th),lz=-Math.cos(th);
+  const vx=b.velocity.x, vz=b.velocity.z; const u=vx*fx+vz*fz, v=vx*lx+vz*lz;
+  let {tf,ts,wt,accU}=driveTargets(r,p,dt);
   // 목표 속도까지의 가속도 (모터 가속 한계) → 힘, 바퀴 견인 한계로 제한
   const au=clamp((tf*p.vmax-u)/dt,-accU,accU);
   const spinning = Math.abs(wt)>0.3 && Math.abs(tf)<0.25;
@@ -1505,11 +1510,14 @@ function netStatus(h){ $('#netStat').innerHTML=h; }
 function randCode(){ const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s=''; for(let i=0;i<5;i++) s+=A[Math.floor(Math.random()*A.length)]; return s; }
 function seatPeer(r){ for(const [pid,s] of NET.seats) if(s.team===r.team && s.idx===r.idx) return pid; return null; }
 function netSend(o){ try{ NET.host && NET.host.open && NET.host.send(o); }catch(e){} }
+function netSendRT(o){ try{ if(NET.hostRT && NET.hostRT.open) NET.hostRT.send(o); else netSend(o); }catch(e){} }
+NET.rt=new Map(); window.__NET=NET;
+function netBroadcastRT(o){ for(const [pid,c] of NET.conns){ const rt=NET.rt.get(pid); try{ if(rt&&rt.open) rt.send(o); else if(c.open) c.send(o); }catch(e){} } if(typeof BC!=='undefined' && BC.viewers>0) try{ BC.ch.postMessage(o); }catch(e){} }
 function netSendTo(pid,o){ const c=NET.conns.get(pid); try{ c && c.open && c.send(o); }catch(e){} }
 function netBroadcast(o){ for(const c of NET.conns.values()) try{ c.open && c.send(o); }catch(e){} if(typeof BC!=='undefined' && BC.viewers>0) try{ BC.ch.postMessage(o); }catch(e){} }
 function myName(){ return ($('#netName').value.trim()||'플레이어').slice(0,12); }
 function netBadge(){ const el=$('#netBadge'); if(NET.role==='off'){ el.style.display='none'; return; } el.style.display='block';
-  el.innerHTML = NET.role==='host' ? `🌐 방장 · 코드 <b>${NET.code}</b> · 접속 ${NET.conns.size}명` : `🌐 참가 중 · ${NET.code} · ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번`; }
+  el.innerHTML = NET.role==='host' ? `🌐 방장 · 코드 <b>${NET.code}</b> · 접속 ${NET.conns.size}명` : `🌐 참가 중 · ${NET.code} · ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번`+(NET.rtt?` · 지연 ${Math.round(NET.rtt)} ms`+(NET.hostRT&&NET.hostRT.open?'':' (실시간 채널 없음)'):''); }
 function netPlayersUI(){ const rows=[];
   if(NET.role==='host'){ rows.push(`<div>👑 ${myName()} (방장) — ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번</div>`); for(const s of NET.seats.values()) rows.push(`<div>🎮 ${s.name} — ${TEAMNAME[s.team]} ${s.idx+1}번</div>`); }
   else if(NET.role==='client' && NET.list) for(const s of NET.list) rows.push(`<div>${s.host?'👑':'🎮'} ${s.name} — ${TEAMNAME[s.team]} ${s.idx+1}번</div>`);
@@ -1536,6 +1544,9 @@ async function netHost(){
   NET.peer=new Peer(PEER_PREFIX+NET.code,{debug:1});
   NET.peer.on('open',()=>{ netStatus(`방 코드 <span class="code">${NET.code}</span><br>다른 기기에서 <b>온라인 → 참가</b>에 이 코드를 넣으세요.`); netPlayersUI(); banner('방 코드 '+NET.code,2,true); });
   NET.peer.on('connection',conn=>{
+    if(conn.metadata && conn.metadata.ch==='rt'){ // 실시간 채널: 스냅샷·입력 전용
+      conn.on('open',()=>NET.rt.set(conn.peer,conn)); conn.on('data',d=>hostOnData(conn,d));
+      conn.on('close',()=>NET.rt.delete(conn.peer)); conn.on('error',()=>NET.rt.delete(conn.peer)); return; }
     conn.on('open',()=>{ NET.conns.set(conn.peer,conn); });
     conn.on('data',d=>hostOnData(conn,d));
     const drop=()=>{ if(!NET.conns.has(conn.peer)) return; const s=NET.seats.get(conn.peer); NET.conns.delete(conn.peer); NET.seats.delete(conn.peer); NET.inputs.delete(conn.peer); if(s) banner(s.name+' 나감 — AI로 전환',1.5); netScheduleConfig(); netPlayersUI(); };
@@ -1549,6 +1560,7 @@ function hostOnData(conn,d){
     if(!seat){ conn.send({type:'full'}); setTimeout(()=>conn.close(),800); return; }
     NET.seats.set(conn.peer,{...seat,name:String(d.name||'게스트').slice(0,12)}); NET.conns.set(conn.peer,conn);
     conn.send(configMsg(conn.peer)); banner(NET.seats.get(conn.peer).name+' 참가 — '+TEAMNAME[seat.team]+' '+(seat.idx+1)+'번',1.5); netScheduleConfig(); netPlayersUI(); }
+  else if(d.type==='ping'){ try{ conn.send({type:'pong',t:d.t}); }catch(e){} }
   else if(d.type==='input'){ const c=d.c||{}; NET.inputs.set(conn.peer,{f:clamp(+c.f||0,-1,1),t:clamp(+c.t||0,-1,1),s:clamp(+c.s||0,-1,1),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni,
     wheel: c.wheel ? {l:clamp(+c.wheel.l||0,-1,1),r:clamp(+c.wheel.r||0,-1,1),bl:!!c.wheel.bl,br:!!c.wheel.br} : null}); }
   else if(d.type==='model'){ const s=NET.seats.get(conn.peer); if(s && d.m && (d.m.kind==='stl'||d.m.kind==='ldraw')) importModelData(d.m,s.team,s.idx); }
@@ -1561,14 +1573,17 @@ async function netJoin(){
   NET.peer=new Peer({debug:1}); NET.code=code;
   NET.peer.on('open',()=>{ const conn=NET.peer.connect(PEER_PREFIX+code,{reliable:true}); NET.host=conn;
     const to=setTimeout(()=>{ if(NET.role!=='client') netStatus('<span class="warn">방을 찾지 못했습니다. 코드를 확인하세요.</span>'); },9000);
-    conn.on('open',()=>{ conn.send({type:'hello',name:myName(),team:+$('#netTeam').value}); });
+    conn.on('open',()=>{ conn.send({type:'hello',name:myName(),team:+$('#netTeam').value});
+      const rt=NET.peer.connect(PEER_PREFIX+code,{reliable:false,metadata:{ch:'rt'}}); NET.hostRT=rt; rt.on('data',d=>clientOnData(d)); });
     conn.on('data',d=>{ clearTimeout(to); clientOnData(d); });
     conn.on('close',()=>{ if(NET.role==='client'){ banner('방장과 연결이 끊겼습니다',2,true); netLeave(); } }); });
   NET.peer.on('error',e=>{ netStatus('<span class="warn">연결 오류: '+e.type+(e.type==='peer-unavailable'?' — 방을 찾지 못했습니다':'')+'</span>'); });
 }
 async function clientOnData(d){
   if(!d||!d.type) return;
-  if(d.type==='s'){ NET.target=d; return; }
+  if(d.type==='s'){ if(NET.target && d.q<=NET.target.q && d.q>NET.target.q-1000) return;   // 늦게 도착한 옛 스냅샷은 버림
+    d.at=performance.now(); d.fa=new Float32Array(d.f instanceof ArrayBuffer ? d.f : (d.f.buffer||d.f)); NET.target=d; return; }
+  if(d.type==='pong'){ NET.rtt=performance.now()-d.t; netBadge(); return; }
   if(d.type==='banner'){ banner(d.text,d.dur,true); const big=/^([123]|스타트!|골든골!|골든포인트!)$/.test(d.text); $('#banner').classList.toggle('big',big); if(/^[123]$/.test(d.text)) beep(880,0.15,0.07,'square'); return; }
   if(d.type==='whistle') return whistle(true);
   if(d.type==='rumble') return rumble(d.w,d.s,d.ms);
@@ -1593,30 +1608,73 @@ async function clientOnData(d){
 }
 function netLeave(){
   const was=NET.role;
-  try{ NET.host && NET.host.close(); }catch(e){} for(const c of NET.conns.values()) try{ c.close(); }catch(e){}
+  try{ NET.host && NET.host.close(); }catch(e){} try{ NET.hostRT && NET.hostRT.close(); }catch(e){} for(const c of [...NET.conns.values(),...NET.rt.values()]) try{ c.close(); }catch(e){}
   try{ NET.peer && NET.peer.destroy(); }catch(e){}
-  Object.assign(NET,{role:'off',peer:null,host:null,code:'',target:null,list:null}); NET.conns.clear(); NET.seats.clear(); NET.inputs.clear();
+  Object.assign(NET,{role:'off',peer:null,host:null,hostRT:null,code:'',target:null,list:null,rtt:0}); NET.conns.clear(); NET.rt.clear();
+  for(const r of robots) r.pred=null; NET.seats.clear(); NET.inputs.clear();
   document.body.classList.remove('client'); netStatus('오프라인'); netPlayersUI();
   if(was==='client'){ setupMatch(); G.phase='idle'; }
 }
 const pq=b=>{ const p=b.position,q=b.quaternion, r=v=>Math.round(v*1e4)/1e4; return [r(p.x),r(p.y),r(p.z),r(q.x),r(q.y),r(q.z),r(q.w)]; };
+// 몸체 하나 = 10 float: 위치 3 · 자세 4 · 속도 x,z · 각속도 y
+const BODYF=10;
+function packBody(a,o,b){ const p=b.position,q=b.quaternion; a[o]=p.x;a[o+1]=p.y;a[o+2]=p.z;a[o+3]=q.x;a[o+4]=q.y;a[o+5]=q.z;a[o+6]=q.w;a[o+7]=b.velocity.x;a[o+8]=b.velocity.z;a[o+9]=b.angularVelocity.y; }
+NET.seq=0;
 function snapshot(){
-  return {type:'s', g:[G.phase,+G.clock.toFixed(2),G.half,G.score[0],G.score[1],G.swap?1:0,G.golden?1:0,G.paused?1:0,+G.five.toFixed(1),+G.t.toFixed(2)], em:G.endMsg||'',
-    r:robots.map(r=>[...pq(r.body),+Math.hypot(r.vx,r.vz).toFixed(2),r.out?1:0,r.kickT>0?+r.kickT.toFixed(3):0,r.coneDone?1:0,r.cmd.estop?1:0]),
-    b: ball? pq(ball.body):null, bl: blocks.map(b=>[...pq(b.body),b.topTeam,b.botTeam,b.out?1:0,b.owner]), c: cones.map(c=>[...pq(c.body),c.out?1:0]) };
+  const n=robots.length+(ball?1:0)+blocks.length+cones.length; const a=new Float32Array(n*BODYF); let o=0;
+  for(const r of robots){ packBody(a,o,r.body); o+=BODYF; } if(ball){ packBody(a,o,ball.body); o+=BODYF; }
+  for(const b of blocks){ packBody(a,o,b.body); o+=BODYF; } for(const c of cones){ packBody(a,o,c.body); o+=BODYF; }
+  return {type:'s', q:++NET.seq, g:[G.phase,+G.clock.toFixed(2),G.half,G.score[0],G.score[1],G.swap?1:0,G.golden?1:0,G.paused?1:0,+G.five.toFixed(1),+G.t.toFixed(2)], em:G.endMsg||'',
+    ri:robots.map(r=>[r.out?1:0,r.kickT>0?+r.kickT.toFixed(3):0,r.coneDone?1:0,r.cmd.estop?1:0,+(r.armT||0).toFixed(3)]),
+    bi:blocks.map(b=>[b.topTeam,b.botTeam,b.out?1:0,b.owner]), ci:cones.map(c=>c.out?1:0), hb:!!ball, f:a.buffer };
 }
 function lerpBody(b,a,k){ b.position.x+= (a[0]-b.position.x)*k; b.position.y+=(a[1]-b.position.y)*k; b.position.z+=(a[2]-b.position.z)*k;
   const q=new CANNON.Quaternion(a[3],a[4],a[5],a[6]); b.quaternion.slerp(q,k,b.quaternion); }
+// 스냅샷 시각 이후의 위치를 속도로 추정(외삽)해서 따라감
+function extrapBody(b,f,o,age,k){ const ex=Math.min(age,0.12);
+  const tx=f[o]+f[o+7]*ex, ty=f[o+1], tz=f[o+2]+f[o+8]*ex;
+  b.position.x+=(tx-b.position.x)*k; b.position.y+=(ty-b.position.y)*k; b.position.z+=(tz-b.position.z)*k;
+  const q=new CANNON.Quaternion(f[o+3],f[o+4],f[o+5],f[o+6]); const wy=f[o+9]*ex;
+  if(Math.abs(wy)>1e-4){ const dq=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0),wy); q.copy(dq.mult(q)); }
+  b.quaternion.slerp(q,k,b.quaternion); b.velocity.x=f[o+7]; b.velocity.z=f[o+8]; b.angularVelocity.y=f[o+9]; }
+function inputMsg(c){ return {type:'input',c:{f:+c.f.toFixed(3),t:+c.t.toFixed(3),s:+c.s.toFixed(3),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni,wheel:c.wheel}}; }
 function netClientFrame(dt){
   const me=robots.find(r=>controller(r)==='me');
-  NET.sendT+=dt; if(me && NET.sendT>=1/40){ NET.sendT=0; const c=me.cmd; netSend({type:'input',c:{f:+c.f.toFixed(3),t:+c.t.toFixed(3),s:+c.s.toFixed(3),act:!!c.act,fine:!!c.fine,estop:!!c.estop,omni:!!c.omni,wheel:c.wheel}}); }
-  const d=NET.target; if(!d) return; const k=1-Math.exp(-dt*18);
+  // 입력: 바뀌면 바로, 아니어도 초당 30번 (실시간 채널)
+  if(me){ const m=inputMsg(me.cmd), sig=JSON.stringify(m.c); NET.sendT+=dt;
+    if(sig!==NET.lastIn || NET.sendT>=1/30){ NET.sendT=0; NET.lastIn=sig; netSendRT(m); } }
+  NET.pingT=(NET.pingT||0)+dt; if(NET.pingT>1){ NET.pingT=0; netSend({type:'ping',t:performance.now()}); }
+  const d=NET.target; if(!d||!d.fa) return;
+  const age=(performance.now()-d.at)/1000 + (NET.rtt||0)/2000;   // 받은 지 지난 시간 + 편도 지연
+  const k=1-Math.exp(-dt*25), f=d.fa;
   const g=d.g; G.phase=g[0]; G.clock=g[1]; G.half=g[2]; G.score=[g[3],g[4]]; G.swap=!!g[5]; G.golden=!!g[6]; G.paused=!!g[7]; G.five=g[8]; G.t=g[9]; G.endMsg=d.em;
-  if(d.r.length!==robots.length) return;
-  d.r.forEach((a,i)=>{ const r=robots[i]; lerpBody(r.body,a,k); r.x=r.body.position.x; r.z=r.body.position.z; r.th=bodyYaw(r.body); r.vx=a[7]; r.vz=0; r.out=!!a[8]; r.kickT=a[9]; r.coneDone=!!a[10]; r.cmd.estop = controller(r)==='me' ? r.cmd.estop : !!a[11]; });
-  if(ball && d.b){ lerpBody(ball.body,d.b,k); ball.x=ball.body.position.x; ball.z=ball.body.position.z; }
-  if(d.bl && d.bl.length===blocks.length) d.bl.forEach((a,i)=>{ const b=blocks[i]; lerpBody(b.body,a,k); if(b.topTeam!==a[7]||b.botTeam!==a[8]){ b.topTeam=a[7]; b.botTeam=a[8]; paintBlock(b); } b.out=!!a[9]; b.owner=a[10]; });
-  if(d.c && d.c.length===cones.length) d.c.forEach((a,i)=>{ lerpBody(cones[i].body,a,k); cones[i].out=!!a[7]; });
+  const n=robots.length+(d.hb?1:0)+blocks.length+cones.length; if(d.ri.length!==robots.length || f.length!==n*BODYF) return;
+  let o=0;
+  robots.forEach((r,i)=>{ const a=d.ri[i]; r.out=!!a[0]; r.kickT=a[1]; r.coneDone=!!a[2]; r.armT=a[4];
+    if(r===me && !r.out) predictMe(r,f,o,age,dt); else { extrapBody(r.body,f,o,age,k); r.cmd.estop=!!a[3]; }
+    r.x=r.body.position.x; r.z=r.body.position.z; r.th=bodyYaw(r.body); r.vx=f[o+7]; r.vz=f[o+8]; o+=BODYF; });
+  if(d.hb){ if(ball){ extrapBody(ball.body,f,o,age,k); ball.x=ball.body.position.x; ball.z=ball.body.position.z; } o+=BODYF; }
+  blocks.forEach((b,i)=>{ extrapBody(b.body,f,o,Math.min(age,0.05),k); const a=d.bi[i]; if(b.topTeam!==a[0]||b.botTeam!==a[1]){ b.topTeam=a[0]; b.botTeam=a[1]; paintBlock(b); } b.out=!!a[2]; b.owner=a[3]; o+=BODYF; });
+  cones.forEach((c,i)=>{ extrapBody(c.body,f,o,Math.min(age,0.05),k); c.out=!!d.ci[i]; o+=BODYF; });
+}
+// 내 로봇: 내 입력으로 바로 움직이고(예측), 방장 결과와 조금씩 맞춤(보정). 충돌 등으로 크게 어긋나면 바로 맞춤
+function predictMe(r,f,o,age,dt){
+  const b=r.body, p=robotParams(r); const P=r.pred || (r.pred={x:f[o],z:f[o+2],th:0,u:0,w:0,init:false});
+  const sx=f[o]+f[o+7]*age, sz=f[o+2]+f[o+8]*age;
+  const sq=new CANNON.Quaternion(f[o+3],f[o+4],f[o+5],f[o+6]); const sv=sq.vmult(new CANNON.Vec3(1,0,0)); const sth=Math.atan2(-sv.z,sv.x)+f[o+9]*age;
+  if(!P.init){ P.x=sx; P.z=sz; P.th=sth; P.init=true; }
+  const live=['play','out','free'].includes(G.phase);
+  if(r.cmd.estop || !live){ P.u=0; P.w=0; if(!live){ P.x=sx; P.z=sz; P.th=sth; } }
+  else { const T=driveTargets(r,p,dt); const acc=Math.min(T.accU, MU*9.81);
+    P.u=approach(P.u, T.tf*p.vmax, acc*dt); P.w=approach(P.w, T.wt, (r.cmd.wheel?60:p.turn*8)*dt);
+    if(r.armT>0){ P.u=approach(P.u,0,acc*dt); P.w=0; } }
+  P.th=wrapA(P.th+P.w*dt); P.x+=Math.cos(P.th)*P.u*dt; P.z+=-Math.sin(P.th)*P.u*dt;
+  // 보정
+  const ex=sx-P.x, ez=sz-P.z, eth=wrapA(sth-P.th), err=Math.hypot(ex,ez);
+  if(err>0.25 || Math.abs(eth)>1.2){ P.x=sx; P.z=sz; P.th=sth; }
+  else { const kc=1-Math.exp(-dt*(err>0.06?8:3)); P.x+=ex*kc; P.z+=ez*kc; P.th=wrapA(P.th+eth*kc); }
+  const sp=Math.hypot(f[o+7],f[o+8]); if(sp<0.02 && Math.abs(P.u)>0.3 && err>0.04) P.u*=0.9;   // 방장에서 막혀 있으면 예측 속도 줄임
+  b.position.x=P.x; b.position.z=P.z; b.position.y+=(f[o+1]-b.position.y)*0.5; b.quaternion.copy(yawQ(P.th));
 }
 // 터치 조종
 const TOUCH={on:false,k:{}};
@@ -1686,7 +1744,7 @@ function frame(now){
   if(NET.role==='client'||NET.role==='spectator'){ netClientFrame(dt); syncVisuals(dt); updateCamera(dt); renderMain(); updateHUD(); return; }
   if(!G.paused && G.phase!=='idle'){ acc+=dt; let n=0; while(acc>=DT && n<24){ ruleStep(DT); if(G.phase!=='end'||true) physicsStep(DT); acc-=DT; n++; } if(n>=24) acc=0; }
   syncVisuals(G.paused?0:dt); updateCamera(dt); renderMain(); updateHUD();
-  if(NET.role==='host' || BC.viewers>0){ NET.snapT+=dt; if(NET.snapT>=1/30){ NET.snapT=0; netBroadcast(snapshot()); } }
+  if(NET.role==='host' || BC.viewers>0){ NET.snapT+=dt; if(NET.snapT>=1/60-1e-4){ NET.snapT=0; netBroadcastRT(snapshot()); } }   // 초당 60번
 }
 
 /* ===================== UI ===================== */
