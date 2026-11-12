@@ -369,8 +369,24 @@ const RULESETS = {
     ],
     sim:['조종: MRC와 같은 Pybricks 코드식 바퀴 제어(D패드 · RT 파워 100/50), 슛터 없음','사이드라인과 골라인에 벽(높이 5 cm로 가정) — 골 입구만 열림','로봇 기본 크기 15 × 15 × 15 cm','골 깊이 12 cm로 가정'],
   },
+  othello2: {
+    name:'로봇배틀 오셀로 · 경기장 v2 (2396 × 1196)', type:'othello', variant:'v2', src:'https://worldrobotleague.net/rules/othello/',
+    arenaL:2.396, arenaW:1.196, frame:0.030, platformH:0.30, mirror:true, coneTip:true,
+    robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:0.5,v:0.9,turn:5,acc:4},
+    teamSize:1, teamOpts:[1,2], halves:1, halfLen:120, goldenLen:60, called:11,
+    rules:[
+      '경기장 v2 (2026 RRK 도면): 2396 × 1196 mm 직사각형, 바깥 테두리 30 mm, 회색 바닥, 가운데 녹색 중앙선',
+      '왼쪽 = 빨강 진영, 오른쪽 = 파랑 진영',
+      '원판 블록 Ø120 mm: 진영마다 5개가 중앙선에서 240 mm 떨어진 곳에 세로로 맞닿아 놓임',
+      '진영 막대: 20 × 498 mm 바닥 표시, 원판 바깥쪽 (중앙선에서 300~320 mm)',
+      '가운데 판 20 × 120 mm (빨강/파랑 양면), 중앙에 세워져 있음',
+      '스타트 박스 250 × 250 mm (중앙선에서 734 mm), 스타트 타깃 원 진영마다 3개 (뒤쪽 가장자리 가운데 · 위 · 아래)',
+      '그 밖의 규칙(11개 블록, 2분, 콜드게임, 골든포인트, 링아웃, 스탠딩다운)은 경기장 v1과 같음',
+    ],
+    sim:['도면 PDF(2026_RRK_Othello_Arena_2396x1196)에서 치수를 그대로 가져옴','진영 막대는 바닥에 칠한 표시 (턱 없음)','경기장 높이 30 cm(링아웃 가능), 바깥 테두리 30 mm도 바닥면으로 가정','스타트 타깃(콘): 1:1은 가운데 원, 2:2는 위·아래 원. 넘어뜨리거나 떨어뜨리면 제거','2:2는 스타트 박스 위·아래로 나란히 출발'],
+  },
   othello: {
-    name:'로봇배틀 오셀로 (Junior / Senior)', type:'othello', src:'https://worldrobotleague.net/rules/othello/',
+    name:'로봇배틀 오셀로 · 경기장 v1 (팔각)', type:'othello', src:'https://worldrobotleague.net/rules/othello/',
     arena:1.98, platformH:0.30,
     robot:{max:[0.20,0.20,0.20],def:[0.20,0.20,0.20],mass:0.5,v:0.9,turn:5,acc:4},
     teamSize:1, teamOpts:[1,2], halves:1, halfLen:120, goldenLen:60, called:11,
@@ -526,6 +542,7 @@ function buildGoal(s){
 }
 function octagon(a){ const s=a/3, h=a/2; return [[h,-s/2],[h,s/2],[s/2,h],[-s/2,h],[-h,s/2],[-h,-s/2],[-s/2,-h],[s/2,-h]]; }
 function buildOthello(){
+  if(RS.variant==='v2') return buildOthelloV2();
   const A=RS.arena, poly=octagon(A), H=RS.platformH;
   F={type:'othello', poly, A, L:A, W:A, walls:[], H};
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(A+5,A+5), new THREE.MeshStandardMaterial({color:'#2a2f36',roughness:1}));
@@ -548,6 +565,39 @@ function buildOthello(){
   const top=new THREE.Mesh(new THREE.PlaneGeometry(A,A), new THREE.MeshStandardMaterial({map:tex,roughness:0.6,transparent:true,alphaTest:0.01}));
   top.rotation.x=-Math.PI/2; top.position.y=0.0005; top.receiveShadow=true; fieldGroup.add(top);
   setLights(A*1.3);
+  buildPhysicsField();
+}
+// 오셀로 경기장 v2: 2026 RRK 도면 (2396 × 1196 mm)
+const V2={ discX:0.2396, discZ:[-0.2412,-0.1206,0,0.1206,0.2412], barX:0.3095, barHalfW:0.010, barHalfL:0.249, boxX:0.7338, boxHalf:0.1248,
+  cones:{mid:[1.0482,0], top:[1.0251,-0.4218], bot:[1.0251,0.4218]} };
+function buildOthelloV2(){
+  const Lx=RS.arenaL, Lz=RS.arenaW, H=RS.platformH, hx=Lx/2, hz=Lz/2, fr=RS.frame;
+  const poly=[[hx,-hz],[hx,hz],[-hx,hz],[-hx,-hz]];
+  F={type:'othello', variant:'v2', poly, A:Lx, L:Lx, W:Lz, walls:[], H};
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(Lx+5,Lz+5), new THREE.MeshStandardMaterial({color:'#2a2f36',roughness:1}));
+  ground.rotation.x=-Math.PI/2; ground.position.y=-H; ground.receiveShadow=true; fieldGroup.add(ground);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(Lx,H-0.002,Lz), new THREE.MeshStandardMaterial({color:'#b98d5a',roughness:0.9}));
+  body.position.y=-H/2-0.001; body.castShadow=true; body.receiveShadow=true; fieldGroup.add(body);
+  const RED='#e60012', BLUE='#1d2088', BLUEL='#094a9e';
+  const tex=canvasTex(Lx,Lz,(c)=>{
+    c.fillStyle='#231815'; c.fillRect(0,0,Lx,Lz);                    // 검정 테두리
+    c.fillStyle='#b5b6b6'; c.fillRect(fr,fr,Lx-2*fr,Lz-2*fr);         // 회색 바닥
+    c.translate(hx,hz);
+    c.strokeStyle='#007b3d'; c.lineWidth=0.002; c.beginPath(); c.moveTo(0,-hz+fr); c.lineTo(0,hz-fr); c.stroke();   // 중앙선
+    for(const side of [-1,1]){ const col= side<0?RED:BLUEL;
+      c.strokeStyle=col; c.lineWidth=0.0015;
+      for(const z of V2.discZ){ c.beginPath(); c.arc(side*V2.discX,z,0.0599,0,Math.PI*2); c.stroke(); }                        // 원판 자리
+      c.lineWidth=0.0015; c.strokeRect(side*V2.boxX-V2.boxHalf,-V2.boxHalf,2*V2.boxHalf,2*V2.boxHalf);                          // 스타트 박스
+      c.fillStyle= side<0?RED:BLUE; c.fillRect(side*V2.barX-V2.barHalfW,-V2.barHalfL,2*V2.barHalfW,2*V2.barHalfL);            // 진영 막대
+      c.lineWidth=0.001; for(const [k,[cx,cz]] of Object.entries(V2.cones)){ const rs = k==='mid' ? [0.0325,0.0374,0.0549,0.0599,0.0698,0.0748] : [0.0325,0.0374,0.0549,0.0599];
+        for(const rr of rs){ c.beginPath(); c.arc(side*cx,cz,rr,0,Math.PI*2); c.stroke(); } }                                     // 스타트 타깃 원
+    }
+    c.lineWidth=0.0012; c.strokeStyle=RED; c.strokeRect(-0.01,-0.0598,0.01,0.1196); c.strokeStyle=BLUEL; c.strokeRect(0,-0.0598,0.01,0.1196);   // 가운데 판 자리
+  },4096);
+  const top=new THREE.Mesh(new THREE.PlaneGeometry(Lx,Lz), new THREE.MeshStandardMaterial({map:tex,roughness:0.6}));
+  top.rotation.x=-Math.PI/2; top.position.y=0.0005; top.receiveShadow=true; fieldGroup.add(top);
+  // 진영 막대: 바닥에 칠한 표시 (턱 없음)
+  setLights(Lx*1.1);
   buildPhysicsField();
 }
 function setLights(size){ sun.position.set(size*0.4,size*1.6,size*0.6); sun.target.position.set(0,0,0);
@@ -584,6 +634,7 @@ function buildPhysicsField(){
     for(const r of F.roofs) staticBox(r.x,r.h+0.01,0,r.d/2,0.01,r.w/2+0.01);
   } else {
     const g=new CANNON.Body({mass:0,material:MAT.ground}); g.addShape(new CANNON.Plane()); g.quaternion.setFromEuler(-Math.PI/2,0,0); g.position.y=-F.H; world.addBody(g);
+    if(F.variant==='v2'){ const bx=new CANNON.Body({mass:0,material:MAT.ground}); bx.addShape(new CANNON.Box(new CANNON.Vec3(F.L/2,F.H/2,F.W/2))); bx.position.set(0,-F.H/2,0); world.addBody(bx); return; }
     // 팔각 경기장 (볼록 다면체)
     const verts=[]; for(const [x,z] of F.poly) verts.push(new CANNON.Vec3(x,0,z)); for(const [x,z] of F.poly) verts.push(new CANNON.Vec3(x,-F.H,z));
     const n=F.poly.length, faces=[]; const top=[],bot=[]; for(let i=0;i<n;i++){ top.push(i); bot.push(n+i); }
@@ -780,6 +831,7 @@ function controller(r){
   return S.oppMode;
 }
 function setupMatch(){
+  G.swap=!!RS.mirror;
   scene.remove(dynGroup); dynGroup=new THREE.Group(); scene.add(dynGroup);
   if(world){ for(const b of [...world.bodies]) if(b.mass>0) world.removeBody(b); }
   robots=[]; blocks=[]; cones=[]; ball=null;
@@ -790,7 +842,7 @@ function setupMatch(){
     ball.body.addShape(new CANNON.Sphere(rb)); ball.body.userData={kind:'ball',ent:ball}; world.addBody(ball.body);
     dynGroup.add(ball.mesh);
   } else setupOthelloObjects();
-  G.score=[0,0]; G.endMsg=''; G.half=1; G.swap=false; G.golden=false; G.ended=false; G.winner=-1; G.warn=[0,0];
+  G.score=[0,0]; G.endMsg=''; G.half=1; G.swap=!!RS.mirror; G.golden=false; G.ended=false; G.winner=-1; G.warn=[0,0];
   G.clock=RS.halfLen; G.five=0;
   placeKickoff(); setPhase('countdown',true);
   updateSlotsUI();
@@ -806,13 +858,15 @@ function setupOthelloObjects(){
     b.body=new CANNON.Body({mass:b.m,material:MAT.block,linearDamping:0.3,angularDamping:0.3});
     b.body.addShape(square? new CANNON.Box(new CANNON.Vec3(0.06,0.01,0.06)) : new CANNON.Cylinder(0.06,0.06,0.02,16));
     b.body.userData={kind:'block',ent:b}; teleport(b.body,x,0.0102,z,0); world.addBody(b.body); blocks.push(b); };
-  const P=[[0.22,0.46],[0.22,-0.46],[0.46,0.20],[0.46,-0.20],[0.30,0]];
-  for(const [x,z] of P){ mk(-x,z,0,false); mk(x,z,1,false); }
+  const negTeam = attackDir(0)>0 ? 0 : 1;   // -x 쪽 진영 팀
+  if(RS.variant==='v2'){ for(const z of V2.discZ){ mk(-V2.discX,z,negTeam,false); mk(V2.discX,z,1-negTeam,false); } }
+  else { const P=[[0.22,0.46],[0.22,-0.46],[0.46,0.20],[0.46,-0.20],[0.30,0]];
+    for(const [x,z] of P){ mk(-x,z,negTeam,false); mk(x,z,1-negTeam,false); } }
   // 가운데 네모판: 12 × 12 cm 판이 세워져 있음. 블루 진영(-x) 쪽 면은 파랑, 레드 진영(+x) 쪽 면은 빨강
-  { const b={x:0,z:0,vx:0,vz:0,r:0.068,m:0.03,square:true,board:true,home:-1,owner:-1,out:false,last:-1,mesh:new THREE.Group(),topTeam:1,botTeam:0,flipping:0};
+  { const posTeam=1-negTeam; const b={x:0,z:0,vx:0,vz:0,r:0.068,m:0.03,square:true,board:true,home:-1,owner:-1,out:false,last:-1,mesh:new THREE.Group(),topTeam:posTeam,botTeam:negTeam,flipping:0};
     const geo=new THREE.BoxGeometry(0.01,0.12,0.12);
-    b.top=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[1],roughness:0.7})); b.top.position.x=0.005;
-    b.bot=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[0],roughness:0.7})); b.bot.position.x=-0.005;
+    b.top=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[posTeam],roughness:0.7})); b.top.position.x=0.005;   // +x 진영 색
+    b.bot=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:TEAMCOL[negTeam],roughness:0.7})); b.bot.position.x=-0.005;  // -x 진영 색
     b.mesh.add(b.top,b.bot); b.top.castShadow=b.bot.castShadow=true; dynGroup.add(b.mesh);
     b.body=new CANNON.Body({mass:b.m,material:MAT.block,linearDamping:0.3,angularDamping:0.3});
     b.body.addShape(new CANNON.Box(new CANNON.Vec3(0.01,0.06,0.06)));
@@ -838,18 +892,21 @@ function placeKickoff(){
 function placeOthello(){
   for(const c of cones){ dynGroup.remove(c.mesh); dynGroup.remove(c.ring); world.removeBody(c.body); } cones=[];
   for(const t of [0,1]){ const ad=attackDir(t); const list=robots.filter(r=>r.team===t);
-    list.forEach((r,i)=>{ const z = list.length>1 ? (i? -0.2:0.2) : 0;
+    list.forEach((r,i)=>{ let z = list.length>1 ? (i? -0.2:0.2) : 0;
       // 콘: 시작 위치 뒤쪽 경기장 가장자리(지정 원)에 놓임 → 로봇이 회전해서 쳐 떨어뜨려야 함
-      const CR=0.04, edgeX=F.A/2, cx=-ad*(edgeX-CR-0.006);
-      const x=-ad*(edgeX-0.006-2*CR-0.018-r.hl);
+      const CR=0.04, edgeX=F.A/2; let cx=-ad*(edgeX-CR-0.006), cz=z;
+      let x=-ad*(edgeX-0.006-2*CR-0.018-r.hl);
+      if(RS.variant==='v2'){ // 스타트 박스 중심 · 지정 원
+        x=-ad*V2.boxX; z = list.length>1 ? (i? -1:1)*(r.hw+0.012) : 0;
+        const cp = list.length>1 ? (i? V2.cones.top : V2.cones.bot) : V2.cones.mid; cx=-ad*cp[0]; cz=cp[1]; }
       Object.assign(r,{x,z,th:ad>0?0:Math.PI,vx:0,vz:0,w:0,out:false,fallT:0,coneDone:!S.strict,idleT:0,sdT:0,spinT:0});
       r.body.angularFactor.set(0,1,0); teleport(r.body,x,r.H/2+0.001,z,r.th);
-      if(S.strict){ const c={x:cx,z,vx:0,vz:0,r:CR,m:0.015,team:t,robot:r,tip:0,tipped:false,out:false,fallT:0,
+      if(S.strict){ const c={x:cx,z:cz,vx:0,vz:0,r:CR,m:0.015,team:t,robot:r,tip:0,tipped:false,out:false,fallT:0,
           mesh:new THREE.Group()};
         const cm=new THREE.Mesh(new THREE.ConeGeometry(CR,0.08,24),new THREE.MeshStandardMaterial({color:'#ffd400',roughness:0.6})); cm.castShadow=true; c.mesh.add(cm);
-        const ring=new THREE.Mesh(new THREE.RingGeometry(0.05,0.056,32),new THREE.MeshBasicMaterial({color:'#333',side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(cx,0.001,z); dynGroup.add(ring); c.ring=ring;
+        const ring=new THREE.Mesh(new THREE.RingGeometry(0.05,0.056,32),new THREE.MeshBasicMaterial({color:'#333',side:THREE.DoubleSide})); ring.rotation.x=-Math.PI/2; ring.position.set(cx,0.001,cz); dynGroup.add(ring); c.ring=ring; if(RS.variant==='v2') ring.visible=false;
         c.body=new CANNON.Body({mass:0.02,material:MAT.cone,linearDamping:0.2,angularDamping:0.2}); c.body.addShape(new CANNON.Cylinder(0.006,CR,0.08,16));
-        c.body.userData={kind:'cone',ent:c}; teleport(c.body,cx,0.0402,z); world.addBody(c.body);
+        c.body.userData={kind:'cone',ent:c}; teleport(c.body,cx,0.0402,cz); world.addBody(c.body);
         dynGroup.add(c.mesh); cones.push(c); }
     }); }
 }
@@ -1110,19 +1167,31 @@ function aiOthello(r, skill, dt){
   if(Math.abs(r.cmd.f)>0.12 && sp<0.03){ r.stuckT+=dt; if(r.stuckT>1.0){ r.unstick=0.6; r.unstickDir=Math.random()<0.5?-1:1; r.stuckT=0; r.ban=r.tgt; r.banT=2.5; } } else r.stuckT=Math.max(0,r.stuckT-dt);
   r.banT=Math.max(0,(r.banT||0)-dt); r.tgtT=(r.tgtT||0)+dt;
   const cone=cones.find(c=>c.robot===r && !c.out);
+  if(cone && RS.variant==='v2'){ steer(r,cone.x,cone.z,{speed:0.55*skill,reverseOK:true,arrive:0.05}); return; }   // v2: 뒤쪽 지정 원의 콘까지 가서 쓰러뜨림
   if(cone){ r.spinT=(r.spinT||0)+dt;
     if(r.spinT<2.5){ r.cmd.f=0; r.cmd.t=(cone.z>=r.z?1:-1)*(0.6+0.4*skill); return; }
     const ox=Math.sign(cone.x)||1; steer(r,cone.x+ox*0.15,cone.z,{speed:0.5*skill,reverseOK:true,arrive:0.1}); if(r.spinT>5) r.spinT=0; return; }
-  if(edge < Math.max(r.hl,r.hw)+0.12){ steer(r,0,0,{speed:0.6*skill,reverseOK:true}); return; }
+  if(edge < Math.max(r.hl,r.hw)+(RS.variant==='v2'?0.05:0.12)){ steer(r,0,0,{speed:0.6*skill,reverseOK:true}); return; }
   let best=null, bd=1e9;
   for(const b of blocks){ if(b.out||b.flip>0||b.owner===r.team) continue; if(inPoly(b.x,b.z,F.poly)<0.05) continue; if(r.banT>0 && b===r.ban) continue;
     let d=Math.hypot(b.x-r.x,b.z-r.z); for(const o of robots) if(o!==r && o.team===r.team && !o.out && Math.hypot(b.x-o.x,b.z-o.z)<d-0.05) d+=0.5; if(d<bd){bd=d;best=b;} }
-  if(!best){ steer(r,0,0,{speed:0.4*skill}); return; }
+  if(!best){ // 뒤집을 블록이 없으면 순찰 (스탠딩다운 방지 · 상대 블로킹)
+    r.patT=(r.patT||0)-dt; if(r.patT<=0){ r.patT=2.2; r.patZ=(r.patZ>0?-1:1)*0.18; }
+    steer(r,-attackDir(r.team)*-0.08,r.patZ||0.18,{speed:0.45*skill,arrive:0.1}); return; }
   if(best!==r.tgt){ r.tgt=best; r.tgtT=0; } if(r.tgtT>4){ r.ban=best; r.banT=3; r.tgtT=0; }
+  if(RS.variant==='v2' && RS.barWall){ // (막대가 턱일 때만) 자기 진영 막대·원판 뒤에 있으면 막대 끝을 돌아서 앞으로 나감
+    const side=-attackDir(r.team), sx=side*r.x;
+    if(sx>0.16){ const sg = r.lane || (r.z>=0?1:-1); r.lane=sg; r.tgtT=0;
+      const wp = Math.abs(r.z)<0.38 ? [side*Math.max(sx,0.42), sg*0.41] : [side*0.06, sg*0.41];
+      steer(r,wp[0],wp[1],{speed:skill,arrive:0.12,reverseOK:false}); return; }
+    r.lane=0; }
   const ang=Math.atan2(-(best.z-r.z),best.x-r.x);
   const dx=best.x-r.x, dzz=best.z-r.z; const c=Math.cos(r.th), s=Math.sin(r.th); const lx=dx*c+dzz*(-s), ly=dx*(-s)+dzz*(-c);
   const reach = lx>r.hl-0.02 && lx<r.hl+0.10+best.r && Math.abs(ly)<r.hw+0.03;
-  if(reach){ r.cmd.f=0; r.cmd.t=0; if(Math.random()<skill*0.25) r.cmd.act=true; return; }
+  if(reach){ r.cmd.f=0; r.cmd.t=0;
+    if(r.actCD<=0 && Math.random()<skill*0.25){ r.cmd.act=true; r.flipTry = r.flipTgt===best ? (r.flipTry||0)+1 : 1; r.flipTgt=best;
+      if(r.flipTry>=3){ r.ban=best; r.banT=4; r.flipTry=0; r.unstick=0.5; r.unstickDir=Math.random()<0.5?-1:1; } }   // 3번 실패하면 물러나서 다른 블록
+    return; }
   const stand=Math.max(0, bd-(r.hl+best.r+0.04));
   steer(r,best.x,best.z,{speed:skill*clamp(stand/0.2,0.25,1),arrive:0.25});
 }
@@ -1280,7 +1349,8 @@ function soccerChecks(dt){
 }
 const ARM_T=0.16;
 function othelloChecks(dt){
-  for(const c of cones){ if(c.out) continue; if(c.y<-0.03){ c.out=true; c.robot.coneDone=true;
+  for(const c of cones){ if(c.out) continue; const tilted = RS.coneTip && c.body.quaternion.vmult(new CANNON.Vec3(0,1,0)).y<0.5;
+    if(c.y<-0.03 || tilted){ c.out=true; c.robot.coneDone=true;
       if(c.team===S.myTeam){ banner('스타트 타깃 제거 ✓',0.9); rumble(0.3,0.3,120); } } }
   // 블록 방향 → 소유 팀 (윗면 색)
   for(const b of blocks){ if(b.out) continue; const up=b.body.quaternion.vmult(b.board?new CANNON.Vec3(1,0,0):new CANNON.Vec3(0,1,0)).y;
@@ -1420,7 +1490,7 @@ function updateHUD(){
   const me=robots.find(r=>controller(r)==='me');
   let side=`<b>${RS.name}</b><br>나: ${TEAMNAME[S.myTeam]} ${S.myRobot+1}번 · 상대 ${S.oppMode==='ai'?'AI':'정지'} · 팀원 ${S.mateMode==='ai'?'AI':'정지'}`;
   if(me) side+=`<br>속도 ${Math.hypot(me.vx,me.vz).toFixed(2)} m/s`+(me.cmd.wheel?` · 파워 ${me.mrcPower}`:'')+(me.cmd.estop?' <span class="warn"><b>■ 비상정지</b></span>':'');
-  if(RS.type==='othello' && S.strict){ const c=cones.filter(c=>c.team===S.myTeam && !c.out).length; if(c) side+='<br><span class="warn">⚠ 제자리 회전으로 뒤쪽 노란 콘(스타트 타깃)을 경기장 밖으로 떨어뜨리세요</span>'; }
+  if(RS.type==='othello' && S.strict){ const c=cones.filter(c=>c.team===S.myTeam && !c.out).length; if(c) side+= RS.variant==='v2' ? '<br><span class="warn">⚠ 먼저 뒤쪽 지정 원의 노란 콘(스타트 타깃)을 쓰러뜨리세요</span>' : '<br><span class="warn">⚠ 제자리 회전으로 뒤쪽 노란 콘(스타트 타깃)을 경기장 밖으로 떨어뜨리세요</span>'; }
   if(G.five>0.5) side+=`<br><span class="warn">5초 룰 ${(5-G.five).toFixed(1)}</span>`;
   if(G.phase==='end' && G.endMsg) side+=`<br><span class="ok">${G.endMsg}</span>`;
   $('#side').innerHTML=side;
