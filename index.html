@@ -2013,7 +2013,10 @@ if(window.DEFAULT_ROBOTS && window.DEFAULT_ROBOTS.othello){ const dr=window.DEFA
 if(IS_SPECTATOR){ document.body.classList.add('spectator'); $('#overlay').style.display='none'; document.title='📺 중계 — 대회연습용 조종 시뮬레이터';
   const id=Math.random().toString(36).slice(2); const hi=()=>BC.ch&&BC.ch.postMessage({type:'spectate',id}); hi(); setTimeout(()=>{ if(NET.role!=='spectator') hi(); },800);
   window.addEventListener('beforeunload',()=>{ try{ BC.ch.postMessage({type:'bye',id}); }catch(e){} }); }
-fillRS(); applyRS('mrc_open'); G.phase='idle'; setCam('behind'); resize();
+// 바로 가기 링크: ?rs=<종목 키> (예: ?rs=othello2 → 로봇배틀 오셀로 경기장 v2). 없거나 모르는 키면 MRC 오픈으로 시작
+const START_RS=(()=>{ try{ const q=new URLSearchParams(location.search); let k=(q.get('rs')||q.get('game')||'').trim();
+  k=({othello_v2:'othello2','othello-v2':'othello2',v2:'othello2',othello_v1:'othello'})[k]||k; return RULESETS[k]?k:'mrc_open'; }catch(e){ return 'mrc_open'; } })();
+fillRS(); applyRS(START_RS); $('#rsSel').value=START_RS; G.phase='idle'; setCam('behind'); resize();
 requestAnimationFrame(frame);
 </script>
 </body>
