@@ -1399,7 +1399,9 @@ function bladeRide(){
       const h=Math.min(RIDE_MAX, r.bladeSlope*(r.bladeXT-Math.max(xr,r.bladeX0))); const al=Math.asin(clamp(h/(2*R),0,0.9));
       const s=Math.sign(upv.y)||1; const yaw=r.th;
       const qy=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,1,0), b.board?yaw:Math.atan2(-f[1],f[0]));
-      const flipQ = s>0 ? new CANNON.Quaternion() : new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(1,0,0),Math.PI);
+      // 아랫면이 위를 보던 판은 뒤집힌 채로 유지. 원판의 면 방향은 로컬 y → x축 180°, 가운데 네모판의 면 방향은 로컬 x → z축 180°
+      // (네모판을 x축으로 돌리면 면 방향이 그대로라, 날 위에 올라타는 순간 뒤집히지 않았는데 색이 바뀌던 문제)
+      const flipQ = s>0 ? new CANNON.Quaternion() : new CANNON.Quaternion().setFromAxisAngle(b.board?new CANNON.Vec3(0,0,1):new CANNON.Vec3(1,0,0),Math.PI);
       const boardQ = b.board ? new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0,0,1),Math.PI/2) : new CANNON.Quaternion();
       const tilt=new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(f[1],0,-f[0]), al);
       B.quaternion.copy(tilt.mult(qy.mult(boardQ.mult(flipQ)))); B.quaternion.normalize();
